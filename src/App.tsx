@@ -3,7 +3,8 @@ import { Bookmark, RefreshCw, Sparkles } from 'lucide-react';
 import PromptSetup from './components/PromptSetup';
 import InternshipCard from './components/InternshipCard';
 import SearchFilters from './components/SearchFilters';
-import { supabase, Internship } from './lib/supabase';
+import { mockInternships, Internship } from './lib/mockData';
+import { localStorageDB } from './lib/localStorage';
 
 function App() {
   const [showSetup, setShowSetup] = useState(true);
@@ -32,34 +33,24 @@ function App() {
     applyFilters();
   }, [internships, searchQuery, selectedJobTypes, selectedYears, showRemoteOnly, showSavedOnly, savedIds]);
 
-  const fetchInternships = async () => {
+  const fetchInternships = () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('internships')
-        .select('*')
-        .eq('is_active', true)
-        .order('posted_date', { ascending: false });
-
-      if (error) throw error;
-      setInternships(data || []);
+      // Simulate a small delay for realistic loading
+      setTimeout(() => {
+        setInternships(mockInternships);
+        setLoading(false);
+      }, 500);
     } catch (error) {
       console.error('Error fetching internships:', error);
-    } finally {
       setLoading(false);
     }
   };
 
-  const fetchSavedInternships = async () => {
+  const fetchSavedInternships = () => {
     try {
-      const { data, error } = await supabase
-        .from('saved_internships')
-        .select('internship_id')
-        .eq('session_id', sessionId);
-
-      if (error) throw error;
-      const ids = new Set(data?.map((item) => item.internship_id) || []);
-      setSavedIds(ids);
+      const savedInternshipIds = localStorageDB.getSavedInternships(sessionId);
+      setSavedIds(new Set(savedInternshipIds));
     } catch (error) {
       console.error('Error fetching saved internships:', error);
     }
@@ -116,7 +107,7 @@ function App() {
     return { jobTypes, years, remote };
   };
 
-  const handlePromptComplete = async (prompt: string) => {
+  const handlePromptComplete = (prompt: string) => {
     setUserPrompt(prompt);
 
     const filters = parsePromptForFilters(prompt);
@@ -126,7 +117,7 @@ function App() {
     setSearchQuery(prompt);
 
     try {
-      await supabase.from('user_preferences').insert({
+      localStorageDB.saveUserPreferences({
         session_id: sessionId,
         preferred_job_types: filters.jobTypes,
         eligible_year: filters.years[0] || null,
@@ -141,33 +132,19 @@ function App() {
     setShowSetup(false);
   };
 
-  const toggleSaveInternship = async (internshipId: string) => {
+  const toggleSaveInternship = (internshipId: string) => {
     const isSaved = savedIds.has(internshipId);
 
     try {
       if (isSaved) {
-        const { error } = await supabase
-          .from('saved_internships')
-          .delete()
-          .eq('session_id', sessionId)
-          .eq('internship_id', internshipId);
-
-        if (error) throw error;
-
+        localStorageDB.unsaveInternship(sessionId, internshipId);
         setSavedIds((prev) => {
           const newSet = new Set(prev);
           newSet.delete(internshipId);
           return newSet;
         });
       } else {
-        const { error } = await supabase.from('saved_internships').insert({
-          session_id: sessionId,
-          internship_id: internshipId,
-          status: 'saved',
-        });
-
-        if (error) throw error;
-
+        localStorageDB.saveInternship(sessionId, internshipId);
         setSavedIds((prev) => new Set([...prev, internshipId]));
       }
     } catch (error) {

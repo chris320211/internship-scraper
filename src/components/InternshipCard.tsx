@@ -1,5 +1,5 @@
 import { MapPin, Calendar, DollarSign, Clock, Bookmark, ExternalLink, CheckCircle } from 'lucide-react';
-import { Internship } from '../lib/supabase';
+import { Internship } from '../lib/mockData';
 
 interface InternshipCardProps {
   internship: Internship;
