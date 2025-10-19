@@ -42,6 +42,62 @@ function sanitizeDescription(description) {
   return cleaned || '';
 }
 
+function normalizeCompanyName(name) {
+  if (!name) {
+    return 'Unknown Company';
+  }
+
+  const normalized = String(name).trim();
+  return normalized || 'Unknown Company';
+}
+
+function isSearchUrl(url) {
+  if (!url) {
+    return true;
+  }
+
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.toLowerCase();
+    const pathname = parsed.pathname.toLowerCase();
+    const query = parsed.search.toLowerCase();
+
+    const exactMatches = new Set(['', '/', '/jobs', '/careers', '/careers/']);
+    if (exactMatches.has(pathname)) {
+      return true;
+    }
+
+    const substrings = [
+      '/jobs/search',
+      '/job-search',
+      '/jobsearch',
+      '/search/jobs',
+      '/careers/search',
+      '/search-careers',
+      '/search/',
+    ];
+    if (substrings.some((segment) => pathname.includes(segment))) {
+      return true;
+    }
+
+    if (query.includes('search=') || query.includes('keyword=') || query.includes('keywords=') || query.includes('q=')) {
+      return true;
+    }
+
+    if (hostname.includes('indeed') && !pathname.includes('viewjob')) {
+      return true;
+    }
+
+    if (hostname.includes('linkedin') && pathname.includes('/jobs/')) {
+      return pathname.includes('/jobs/search');
+    }
+
+    return false;
+  } catch (error) {
+    return true;
+  }
+}
+
 // Database connection pool
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
@@ -68,6 +124,11 @@ pool.on('error', (err) => {
  */
 export async function upsertInternship(internship) {
   const sanitizedDescription = sanitizeDescription(internship.description);
+  const companyName = normalizeCompanyName(internship.company_name);
+  if (isSearchUrl(internship.application_url)) {
+    console.warn(`Skipping internship ${internship.id} due to search page URL: ${internship.application_url}`);
+    return null;
+  }
 
   const query = `
     INSERT INTO internships (
@@ -90,7 +151,7 @@ export async function upsertInternship(internship) {
 
   const values = [
     internship.id,
-    internship.company_name,
+    companyName,
     internship.position_title,
     sanitizedDescription,
     internship.job_type,
@@ -119,6 +180,12 @@ export async function bulkUpsertInternships(internships) {
     let updatedCount = 0;
 
     for (const internship of internships) {
+      if (isSearchUrl(internship.application_url)) {
+        console.warn(`Skipping internship ${internship.id} due to search page URL: ${internship.application_url}`);
+        continue;
+      }
+
+      const companyName = normalizeCompanyName(internship.company_name);
       const result = await client.query(
         `
         INSERT INTO internships (
@@ -141,7 +208,7 @@ export async function bulkUpsertInternships(internships) {
         `,
         [
           internship.id,
-          internship.company_name,
+          companyName,
           internship.position_title,
           sanitizeDescription(internship.description),
           internship.job_type,
@@ -176,49 +243,68 @@ export async function bulkUpsertInternships(internships) {
  * Get all active internships with filters
  */
 export async function getInternships(filters = {}) {
-  let query = 'SELECT * FROM internships WHERE is_active = true';
+  const conditions = ['is_active = true'];
   const values = [];
   let paramCount = 1;
 
   // Search query filter
   if (filters.query) {
-    query += ` AND (
+    conditions.push(`(
       LOWER(company_name) LIKE $${paramCount} OR
       LOWER(position_title) LIKE $${paramCount} OR
       LOWER(description) LIKE $${paramCount} OR
       LOWER(job_type) LIKE $${paramCount}
-    )`;
+    )`);
     values.push(`%${filters.query.toLowerCase()}%`);
     paramCount++;
   }
 
   // Job type filter
   if (filters.jobTypes && filters.jobTypes.length > 0) {
-    query += ` AND job_type = ANY($${paramCount})`;
+    conditions.push(`job_type = ANY($${paramCount})`);
     values.push(filters.jobTypes);
     paramCount++;
   }
 
   // Eligible years filter
   if (filters.years && filters.years.length > 0) {
-    query += ` AND eligible_years && $${paramCount}`;
+    conditions.push(`eligible_years && $${paramCount}`);
     values.push(filters.years);
     paramCount++;
   }
 
   // Remote only filter
   if (filters.remoteOnly) {
-    query += ` AND LOWER(location) LIKE '%remote%'`;
+    conditions.push(`LOWER(location) LIKE '%remote%'`);
   }
 
   // Source filter
   if (filters.source) {
-    query += ` AND source = $${paramCount}`;
+    conditions.push(`source = $${paramCount}`);
     values.push(filters.source);
     paramCount++;
   }
 
-  query += ' ORDER BY posted_date DESC';
+  const whereClause = conditions.length > 0 ? conditions.join(' AND ') : 'TRUE';
+
+  let query = `
+    SELECT *
+    FROM (
+      SELECT
+        i.*,
+        ROW_NUMBER() OVER (
+          PARTITION BY
+            LOWER(TRIM(i.company_name)),
+            LOWER(TRIM(i.position_title)),
+            LOWER(TRIM(i.location)),
+            COALESCE(i.application_url, '')
+        ) AS row_num
+      FROM internships i
+      WHERE ${whereClause}
+    ) filtered
+    WHERE row_num = 1
+    ORDER BY posted_date DESC
+  `;
 
   // Limit
   if (filters.limit) {
@@ -228,10 +314,13 @@ export async function getInternships(filters = {}) {
   }
 
   const result = await pool.query(query, values);
-  return result.rows.map((row) => ({
-    ...row,
-    description: sanitizeDescription(row.description),
-  }));
+  return result.rows
+    .filter((row) => !isSearchUrl(row.application_url))
+    .map((row) => ({
+      ...row,
+      description: '',
+      company_name: normalizeCompanyName(row.company_name),
+    }));
 }
 
 /**

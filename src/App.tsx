@@ -163,7 +163,6 @@ function App() {
         (internship) =>
           internship.company_name.toLowerCase().includes(query) ||
           internship.position_title.toLowerCase().includes(query) ||
-          internship.description.toLowerCase().includes(query) ||
           internship.job_type.toLowerCase().includes(query)
       );
     }

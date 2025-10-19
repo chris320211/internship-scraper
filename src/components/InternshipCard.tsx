@@ -22,17 +22,21 @@ export default function InternshipCard({ internship, isSaved, onToggleSave }: In
     return daysUntil <= 7 && daysUntil >= 0;
   };
 
+  const companyName = internship.company_name || 'Unknown Company';
+
   return (
     <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all p-6 border border-slate-200 hover:border-blue-300">
       <div className="flex justify-between items-start mb-4">
         <div className="flex-1">
           <div className="flex items-start gap-3 mb-2">
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg w-12 h-12 flex items-center justify-center text-white font-bold text-lg shadow-md">
-              {internship.company_name.charAt(0)}
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg px-3 py-2 flex items-center justify-center text-white font-semibold text-sm shadow-md max-w-[160px]">
+              <span className="truncate" title={companyName}>
+                {companyName}
+              </span>
             </div>
             <div>
               <h3 className="text-xl font-bold text-slate-900">{internship.position_title}</h3>
-              <p className="text-slate-600 font-medium">{internship.company_name}</p>
+              <p className="text-slate-600 font-medium">{companyName}</p>
             </div>
           </div>
         </div>
@@ -62,10 +66,6 @@ export default function InternshipCard({ internship, isSaved, onToggleSave }: In
           </span>
         ))}
       </div>
-
-      <p className="text-slate-700 text-sm leading-relaxed mb-4 line-clamp-3">
-        {internship.description}
-      </p>
 
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="flex items-center gap-2 text-sm text-slate-600">

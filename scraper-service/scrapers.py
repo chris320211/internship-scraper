@@ -4,8 +4,90 @@ Web scrapers for various internship sources using Scrapling
 from scrapling.fetchers import Fetcher, StealthyFetcher
 from typing import List, Dict, Optional
 import re
-from datetime import datetime
+from datetime import datetime, date
 from urllib.parse import urljoin, urlparse
+from html import unescape
+from dateutil import parser as date_parser
+
+DATE_KEYWORDS = re.compile(
+    r'(deadline|apply by|apply before|applications? (?:due|close|deadline)|'
+    r'application deadline|closes on|closing date|apply no later than)',
+    re.IGNORECASE
+)
+
+DATE_PATTERNS = [
+    re.compile(r'\b\d{1,2}/\d{1,2}/\d{2,4}\b'),
+    re.compile(r'\b\d{4}-\d{1,2}-\d{1,2}\b'),
+    re.compile(
+        r'\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|'
+        r'jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|'
+        r'dec(?:ember)?)[\s\.]+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?\b',
+        re.IGNORECASE
+    ),
+]
+
+
+def _parse_date_string(raw_value: str) -> Optional[str]:
+    """Attempt to parse a string into ISO date format."""
+    try:
+        parsed = date_parser.parse(
+            raw_value,
+            fuzzy=True,
+            default=datetime(datetime.utcnow().year, 1, 1)
+        )
+        parsed_date = parsed.date()
+
+        # If parser defaulted to year 1900, skip
+        if parsed.year == 1900:
+            return None
+
+        # Normalize to future if date already passed this year but no year provided
+        today = datetime.utcnow().date()
+        if parsed.year == today.year and parsed_date < today:
+            try:
+                parsed_date = date(
+                    today.year + 1,
+                    parsed_date.month,
+                    parsed_date.day
+                )
+            except ValueError:
+                # Handle February 29 on non-leap year by skipping
+                return None
+
+        return parsed_date.isoformat()
+    except (ValueError, OverflowError):
+        return None
+
+
+def extract_application_deadline(*candidates: Optional[str]) -> Optional[str]:
+    """Extract application deadline from iterable text snippets."""
+    for raw in candidates:
+        if not raw:
+            continue
+
+        text = unescape(raw).strip()
+        if not text:
+            continue
+
+        # Direct parsing if the entire string looks like a date
+        direct = _parse_date_string(text)
+        if direct:
+            return direct
+
+        if not DATE_KEYWORDS.search(text):
+            # Check generic date patterns even without keywords
+            segments = []
+            for pattern in DATE_PATTERNS:
+                segments.extend(pattern.findall(text))
+        else:
+            segments = [text]
+
+        for segment in segments:
+            parsed = _parse_date_string(segment if isinstance(segment, str) else segment[0])
+            if parsed:
+                return parsed
+
+    return None
 
 
 class InternshipScraper:
@@ -78,6 +160,16 @@ class LinkedInScraper(InternshipScraper):
                     location = location_elem.text.strip() if location_elem else 'Remote'
                     url = link_elem.attrs.get('href', '') if link_elem else ''
 
+                    timeline_text = ''
+                    posted_elem = card.css_first('time')
+                    if posted_elem:
+                        timeline_text = posted_elem.text.strip()
+
+                    deadline = extract_application_deadline(
+                        timeline_text,
+                        card.text
+                    )
+
                     if self.is_internship(title):
                         jobs.append({
                             'id': f'linkedin-{hash(url)}',
@@ -88,7 +180,7 @@ class LinkedInScraper(InternshipScraper):
                             'location': location,
                             'eligible_years': ['Junior', 'Senior', 'Graduate'],
                             'posted_date': datetime.now().isoformat(),
-                            'application_deadline': None,
+                            'application_deadline': deadline,
                             'application_url': url,
                             'is_active': True,
                             'source': 'LinkedIn'
@@ -133,6 +225,11 @@ class IndeedScraper(InternshipScraper):
                     job_key = link_elem.attrs.get('data-jk', '') if link_elem else ''
                     url = f"https://www.indeed.com/viewjob?jk={job_key}" if job_key else ''
 
+                    deadline = extract_application_deadline(
+                        card.text,
+                        link_elem.attrs.get('title', '') if link_elem else ''
+                    )
+
                     if self.is_internship(title):
                         jobs.append({
                             'id': f'indeed-{job_key}',
@@ -143,7 +240,7 @@ class IndeedScraper(InternshipScraper):
                             'location': location,
                             'eligible_years': ['Sophomore', 'Junior', 'Senior', 'Graduate'],
                             'posted_date': datetime.now().isoformat(),
-                            'application_deadline': None,
+                            'application_deadline': deadline,
                             'application_url': url,
                             'is_active': True,
                             'source': 'Indeed'
@@ -184,6 +281,13 @@ class LevelsFyiScraper(InternshipScraper):
                     link_elem = cells[1].css_first('a')
                     url = link_elem.attrs.get('href', '') if link_elem else ''
 
+                    deadline_candidates = []
+                    if len(cells) > 3:
+                        deadline_candidates.append(cells[3].text.strip())
+                    if len(cells) > 4:
+                        deadline_candidates.append(cells[4].text.strip())
+                    deadline = extract_application_deadline(*deadline_candidates)
+
                     jobs.append({
                         'id': f'levels-{hash(f"{company}-{title}")}',
                         'company_name': company,
@@ -193,7 +297,7 @@ class LevelsFyiScraper(InternshipScraper):
                         'location': location,
                         'eligible_years': ['Sophomore', 'Junior', 'Senior'],
                         'posted_date': datetime.now().isoformat(),
-                        'application_deadline': None,
+                        'application_deadline': deadline,
                         'application_url': url if url.startswith('http') else f'https://www.levels.fyi{url}',
                         'is_active': True,
                         'source': 'Levels.fyi'
@@ -241,6 +345,13 @@ class SimplifyScraper(InternshipScraper):
                     link_elem = role_elem.css_first('a') if role_elem else company_elem.css_first('a')
                     url = link_elem.attrs.get('href', '') if link_elem else ''
 
+                    deadline_candidates = []
+                    if len(cells) > 3:
+                        deadline_candidates.append(cells[3].text.strip())
+                    if len(cells) > 4:
+                        deadline_candidates.append(cells[4].text.strip())
+                    deadline = extract_application_deadline(*deadline_candidates, role, company)
+
                     if company and role:
                         jobs.append({
                             'id': f'simplify-{hash(f"{company}-{role}")}',
@@ -251,7 +362,7 @@ class SimplifyScraper(InternshipScraper):
                             'location': location,
                             'eligible_years': ['Sophomore', 'Junior', 'Senior', 'Graduate'],
                             'posted_date': datetime.now().isoformat(),
-                            'application_deadline': None,
+                            'application_deadline': deadline,
                             'application_url': url,
                             'is_active': True,
                             'source': 'Simplify'

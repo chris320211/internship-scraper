@@ -88,14 +88,10 @@ export const api = {
       const data = await response.json();
       const internships = (data.internships || []) as Internship[];
 
-      return internships.map((internship) => {
-        const cleaned = sanitizeDescription(internship.description);
-
-        return {
-          ...internship,
-          description: cleaned || internship.description,
-        };
-      });
+      return internships.map((internship) => ({
+        ...internship,
+        description: '',
+      }));
     } catch (error) {
       console.error('Error fetching internships from API:', error);
       throw error;
