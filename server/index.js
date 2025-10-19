@@ -1,51 +1,56 @@
 import express from 'express';
 import cors from 'cors';
-import NodeCache from 'node-cache';
-import { fetchAllInternships, searchInternships } from './greenhouseService.js';
+import { getInternships, getDatabaseStats, getScrapingStats } from './database.js';
+import { setupScraperJobs, runInitialScrape, runAllScrapers } from './scraperJob.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-
-// Cache internships for 1 hour (3600 seconds)
-const cache = new NodeCache({ stdTTL: 3600 });
-const CACHE_KEY = 'all_internships';
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/health', async (req, res) => {
+  try {
+    const stats = await getDatabaseStats();
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      database: {
+        connected: true,
+        ...stats,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      database: {
+        connected: false,
+        error: error.message,
+      },
+    });
+  }
 });
 
-// Get all internships (with caching)
+// Get all internships from database
 app.get('/api/internships', async (req, res) => {
   try {
-    // Try to get from cache first
-    let internships = cache.get(CACHE_KEY);
-
-    if (!internships) {
-      console.log('Cache miss - fetching fresh internships from Greenhouse...');
-      internships = await fetchAllInternships();
-      cache.set(CACHE_KEY, internships);
-    } else {
-      console.log('Cache hit - returning cached internships');
-    }
-
-    // Apply filters from query params
     const filters = {
       query: req.query.q,
       jobTypes: req.query.jobTypes ? req.query.jobTypes.split(',') : undefined,
       years: req.query.years ? req.query.years.split(',') : undefined,
       remoteOnly: req.query.remoteOnly === 'true',
+      source: req.query.source,
+      limit: req.query.limit ? parseInt(req.query.limit) : undefined,
     };
 
-    const filtered = searchInternships(internships, filters);
+    const internships = await getInternships(filters);
 
     res.json({
-      total: filtered.length,
-      internships: filtered,
+      total: internships.length,
+      internships: internships,
     });
   } catch (error) {
     console.error('Error fetching internships:', error);
@@ -56,17 +61,18 @@ app.get('/api/internships', async (req, res) => {
   }
 });
 
-// Force refresh internships (clears cache)
+// Force refresh internships (run scraping jobs manually)
 app.post('/api/internships/refresh', async (req, res) => {
   try {
-    console.log('Forcing refresh of internships...');
-    cache.del(CACHE_KEY);
-    const internships = await fetchAllInternships();
-    cache.set(CACHE_KEY, internships);
+    console.log('Manual refresh triggered...');
+    const results = await runAllScrapers();
+
+    const stats = await getDatabaseStats();
 
     res.json({
       message: 'Internships refreshed successfully',
-      total: internships.length,
+      ...stats,
+      scrapingResults: results,
     });
   } catch (error) {
     console.error('Error refreshing internships:', error);
@@ -77,33 +83,42 @@ app.post('/api/internships/refresh', async (req, res) => {
   }
 });
 
-// Get cache stats
-app.get('/api/stats', (req, res) => {
-  const stats = cache.getStats();
-  const internships = cache.get(CACHE_KEY) || [];
+// Get database and scraping statistics
+app.get('/api/stats', async (req, res) => {
+  try {
+    const [dbStats, scrapingStats] = await Promise.all([
+      getDatabaseStats(),
+      getScrapingStats(),
+    ]);
 
-  res.json({
-    cache: stats,
-    totalInternships: internships.length,
-    cacheAge: cache.getTtl(CACHE_KEY) ? Math.floor((cache.getTtl(CACHE_KEY) - Date.now()) / 1000) : 0,
-  });
+    res.json({
+      database: dbStats,
+      scraping: scrapingStats,
+    });
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    res.status(500).json({
+      error: 'Failed to fetch statistics',
+      message: error.message,
+    });
+  }
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
   console.log(`💼 Internships API: http://localhost:${PORT}/api/internships`);
   console.log(`🔄 Refresh API: http://localhost:${PORT}/api/internships/refresh`);
+  console.log(`📈 Stats API: http://localhost:${PORT}/api/stats`);
 
-  // Warm up the cache on startup
-  console.log('Warming up cache...');
-  fetchAllInternships()
-    .then(internships => {
-      cache.set(CACHE_KEY, internships);
-      console.log(`✅ Cache warmed up with ${internships.length} internships`);
-    })
-    .catch(error => {
-      console.error('❌ Failed to warm up cache:', error.message);
-    });
+  // Setup automated scraping jobs
+  setupScraperJobs();
+
+  // Run initial scrape on startup (comment out if you want to skip)
+  if (process.env.SKIP_INITIAL_SCRAPE !== 'true') {
+    setTimeout(async () => {
+      await runInitialScrape();
+    }, 5000); // Wait 5 seconds for database to be ready
+  }
 });
