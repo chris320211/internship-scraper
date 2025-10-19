@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Bookmark, RefreshCw, Sparkles } from 'lucide-react';
+import { Bookmark, RefreshCw, Sparkles, AlertCircle } from 'lucide-react';
 import PromptSetup from './components/PromptSetup';
 import InternshipCard from './components/InternshipCard';
 import SearchFilters from './components/SearchFilters';
-import { mockInternships, Internship } from './lib/mockData';
+import { Internship } from './lib/mockData';
 import { localStorageDB } from './lib/localStorage';
+import { api } from './lib/api';
 
 function App() {
   const [showSetup, setShowSetup] = useState(true);
@@ -21,6 +22,7 @@ function App() {
   const [showRemoteOnly, setShowRemoteOnly] = useState(false);
   const [showActiveFilters, setShowActiveFilters] = useState(false);
   const [showSavedOnly, setShowSavedOnly] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!showSetup) {
@@ -33,16 +35,16 @@ function App() {
     applyFilters();
   }, [internships, searchQuery, selectedJobTypes, selectedYears, showRemoteOnly, showSavedOnly, savedIds]);
 
-  const fetchInternships = () => {
+  const fetchInternships = async () => {
     setLoading(true);
+    setError(null);
     try {
-      // Simulate a small delay for realistic loading
-      setTimeout(() => {
-        setInternships(mockInternships);
-        setLoading(false);
-      }, 500);
+      const data = await api.fetchInternships();
+      setInternships(data);
     } catch (error) {
       console.error('Error fetching internships:', error);
+      setError('Failed to load internships. Please check if the backend server is running.');
+    } finally {
       setLoading(false);
     }
   };
@@ -277,6 +279,24 @@ function App() {
             onToggleFilters={() => setShowActiveFilters(!showActiveFilters)}
           />
         </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+              <div>
+                <p className="text-red-800 font-medium">Error loading internships</p>
+                <p className="text-red-600 text-sm">{error}</p>
+                <button
+                  onClick={fetchInternships}
+                  className="mt-2 text-sm text-red-700 hover:text-red-900 underline"
+                >
+                  Try again
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-20">

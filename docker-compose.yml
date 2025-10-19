@@ -1,4 +1,17 @@
 services:
+  # Backend API server
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    restart: unless-stopped
+
+  # Frontend app
   app:
     build:
       context: .
@@ -7,6 +20,9 @@ services:
       - "3000:80"
     environment:
       - NODE_ENV=production
+      - VITE_API_URL=http://localhost:3001
+    depends_on:
+      - api
     restart: unless-stopped
 
   # Development service with hot reload
@@ -20,6 +36,9 @@ services:
       - "5173:5173"
     environment:
       - NODE_ENV=development
+      - VITE_API_URL=http://localhost:3001
     command: npm run dev -- --host
+    depends_on:
+      - api
     profiles:
       - dev
