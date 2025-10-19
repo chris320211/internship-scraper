@@ -3,7 +3,14 @@
     "allow": [
       "Bash(npm install)",
       "Bash(docker-compose:*)",
-      "Bash(docker-compose up:*)"
+      "Bash(docker-compose up:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(curl -s \"http://localhost:3001/api/internships?limit=5\")",
+      "Bash(python3:*)",
+      "Bash(curl:*)",
+      "Bash(node:*)",
+      "Bash(/dev/null)"
     ],
     "deny": [],
     "ask": []

@@ -2,6 +2,53 @@ import { Internship } from './mockData';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+function decodeHtmlEntities(text: string): string {
+  if (!text) {
+    return '';
+  }
+
+  const entityMap: Record<string, string> = {
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&apos;': "'",
+    '&amp;': '&',
+    '&nbsp;': ' ',
+  };
+
+  let decoded = text;
+  let previous = '';
+
+  while (decoded !== previous) {
+    previous = decoded;
+
+    decoded = decoded.replace(
+      /&(lt|gt|quot|apos|amp|nbsp);/g,
+      (match) => entityMap[match] || match
+    );
+
+    decoded = decoded.replace(/&#x([\da-fA-F]+);/g, (_, hex) =>
+      String.fromCharCode(parseInt(hex, 16))
+    );
+    decoded = decoded.replace(/&#(\d+);/g, (_, dec) =>
+      String.fromCharCode(parseInt(dec, 10))
+    );
+  }
+
+  return decoded;
+}
+
+function sanitizeDescription(description: string | null | undefined): string {
+  if (!description) {
+    return '';
+  }
+
+  const decoded = decodeHtmlEntities(description);
+  const withoutTags = decoded.replace(/<[^>]*>/g, ' ');
+
+  return withoutTags.replace(/\s+/g, ' ').trim();
+}
+
 export interface FetchInternshipsParams {
   query?: string;
   jobTypes?: string[];
@@ -39,7 +86,16 @@ export const api = {
       }
 
       const data = await response.json();
-      return data.internships || [];
+      const internships = (data.internships || []) as Internship[];
+
+      return internships.map((internship) => {
+        const cleaned = sanitizeDescription(internship.description);
+
+        return {
+          ...internship,
+          description: cleaned || internship.description,
+        };
+      });
     } catch (error) {
       console.error('Error fetching internships from API:', error);
       throw error;

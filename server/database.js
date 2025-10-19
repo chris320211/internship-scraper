@@ -1,6 +1,47 @@
 import pkg from 'pg';
 const { Pool } = pkg;
 
+function decodeHtmlEntities(text) {
+  if (!text || typeof text !== 'string') {
+    return '';
+  }
+
+  const entityMap = {
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&apos;': "'",
+    '&amp;': '&',
+    '&nbsp;': ' ',
+  };
+
+  let decoded = text.replace(
+    /&(lt|gt|quot|apos|amp|nbsp);/g,
+    (match) => entityMap[match] || match
+  );
+
+  decoded = decoded.replace(/&#x([\da-fA-F]+);/g, (_, hex) =>
+    String.fromCharCode(parseInt(hex, 16))
+  );
+  decoded = decoded.replace(/&#(\d+);/g, (_, dec) =>
+    String.fromCharCode(parseInt(dec, 10))
+  );
+
+  return decoded;
+}
+
+function sanitizeDescription(description) {
+  if (!description) {
+    return '';
+  }
+
+  const decoded = decodeHtmlEntities(description);
+  const withoutTags = decoded.replace(/<[^>]*>/g, ' ');
+  const cleaned = withoutTags.replace(/\s+/g, ' ').trim();
+
+  return cleaned || '';
+}
+
 // Database connection pool
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
@@ -26,6 +67,8 @@ pool.on('error', (err) => {
  * Upsert an internship into the database
  */
 export async function upsertInternship(internship) {
+  const sanitizedDescription = sanitizeDescription(internship.description);
+
   const query = `
     INSERT INTO internships (
       id, company_name, position_title, description, job_type, location,
@@ -49,7 +92,7 @@ export async function upsertInternship(internship) {
     internship.id,
     internship.company_name,
     internship.position_title,
-    internship.description || '',
+    sanitizedDescription,
     internship.job_type,
     internship.location,
     internship.eligible_years || [],
@@ -100,7 +143,7 @@ export async function bulkUpsertInternships(internships) {
           internship.id,
           internship.company_name,
           internship.position_title,
-          internship.description || '',
+          sanitizeDescription(internship.description),
           internship.job_type,
           internship.location,
           internship.eligible_years || [],
@@ -185,7 +228,10 @@ export async function getInternships(filters = {}) {
   }
 
   const result = await pool.query(query, values);
-  return result.rows;
+  return result.rows.map((row) => ({
+    ...row,
+    description: sanitizeDescription(row.description),
+  }));
 }
 
 /**

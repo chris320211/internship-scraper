@@ -114,6 +114,40 @@ function determineEligibleYears(job) {
 }
 
 /**
+ * Clean HTML content and decode HTML entities
+ */
+function cleanDescription(html) {
+  if (!html) return 'No description available';
+
+  // First, decode HTML entities (Greenhouse returns them encoded)
+  let text = html
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/g, '/')
+    .replace(/&#x60;/g, '`')
+    .replace(/&#x3D;/g, '=');
+
+  // Now strip HTML tags
+  text = text.replace(/<[^>]*>/g, '');
+
+  // Remove extra whitespace and newlines
+  text = text.replace(/\s+/g, ' ').trim();
+
+  // Get first 300 characters for description
+  if (text.length > 300) {
+    text = text.substring(0, 300) + '...';
+  }
+
+  return text || 'No description available';
+}
+
+/**
  * Transform Greenhouse job data to our internal format
  */
 function transformJob(job, companyName) {
@@ -123,7 +157,7 @@ function transformJob(job, companyName) {
     id: `${companyName.toLowerCase()}-${job.id}`,
     company_name: companyName,
     position_title: job.title,
-    description: job.content?.replace(/<[^>]*>/g, '').substring(0, 500) || 'No description available',
+    description: cleanDescription(job.content),
     job_type: categorizeJobType(job.title),
     location: location,
     eligible_years: determineEligibleYears(job),
