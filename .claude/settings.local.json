@@ -19,7 +19,9 @@
       "Bash(npm run build:*)",
       "Bash(docker network prune:*)",
       "Bash(xargs -r docker stop)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(SKIP_INITIAL_SCRAPE=true npm start)",
+      "Bash(docker ps:*)"
     ],
     "deny": [],
     "ask": []

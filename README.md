@@ -1,18 +1,24 @@
 # Internship Scraper
 
-A comprehensive internship search application that aggregates real internship postings from **multiple sources**: Greenhouse job boards (20+ companies), Levels.fyi, Simplify, and web scraping. Built with React, TypeScript, Node.js, and Python.
+A comprehensive internship search application that aggregates real internship postings from **multiple sources**: Greenhouse, Lever, Ashby, Workday, SmartRecruiters (50+ companies total), Levels.fyi, Simplify, and web scraping. Built with React, TypeScript, Node.js, and Python.
 
 ## Features
 
-- **Multi-Source Aggregation**: Combines internships from Greenhouse API + web scraping (Levels.fyi, Simplify, etc.)
+- **Multi-Source Aggregation**: Combines internships from 5 major job board platforms + web scraping
+  - **Greenhouse** (20 companies)
+  - **Lever** (10 companies including Netflix, Canva, Figma)
+  - **Ashby** (8 companies including Anthropic, OpenAI, Ramp)
+  - **Workday** (8 large firms including Amazon, Apple, Microsoft)
+  - **SmartRecruiters** (6 companies including Visa, LinkedIn, Bosch)
+  - **Web scraping** (Levels.fyi, Simplify, LinkedIn)
 - **AI-Powered Web Scraping**: Uses [Scrapling](https://github.com/D4Vinci/Scrapling) for intelligent web scraping
-- **Live Internship Data**: Automatically fetches real internship postings from 20+ companies
+- **Live Internship Data**: Automatically fetches real internship postings from 50+ companies
 - **Natural Language Search**: Search for internships using natural language queries
 - **Advanced Filtering**: Filter by job type, eligible year, location, and remote options
 - **Save Opportunities**: Bookmark internships to review later (saved in browser localStorage)
 - **Smart Caching**: Backend caches results for 1 hour to improve performance
 - **Auto-Categorization**: Automatically categorizes internships by type (SWE, Data Science, ML, etc.)
-- **LinkedIn Coverage**: Optional SerpApi integration adds LinkedIn job listings alongside Greenhouse and curated sources
+- **LinkedIn Coverage**: Optional SerpApi integration adds LinkedIn job listings alongside other sources
 
 ## Tech Stack
 
@@ -38,18 +44,19 @@ A comprehensive internship search application that aggregates real internship po
 ## Architecture
 
 ```
-┌─────────────┐      HTTP       ┌─────────────┐      Greenhouse API      ┌──────────────┐
-│   Frontend  │ ◄─────────────► │   Backend   │ ◄────────────────────────►│  20+ Company │
-│  (React)    │   REST API      │  (Express)  │   Fetch & Aggregate      │  Job Boards  │
-└─────────────┘                 └─────┬───────┘                           └──────────────┘
-                                      │
-                                      │ HTTP
-                                      ▼
-                                ┌─────────────┐      Web Scraping        ┌──────────────┐
-                                │   Scraper   │ ◄────────────────────────►│ Levels.fyi   │
-                                │   Service   │   Scrapling Library      │ Simplify     │
-                                │   (Flask)   │                           │ Indeed, etc. │
-                                └─────────────┘                           └──────────────┘
+┌─────────────┐      HTTP       ┌─────────────┐      Multiple APIs       ┌──────────────────┐
+│   Frontend  │ ◄─────────────► │   Backend   │ ◄────────────────────────►│  Job Boards:     │
+│  (React)    │   REST API      │  (Express)  │   Fetch & Aggregate      │  • Greenhouse    │
+└─────────────┘                 └─────┬───────┘                           │  • Lever         │
+                                      │                                    │  • Ashby         │
+                                      │ HTTP                               │  • Workday       │
+                                      ▼                                    │  • SmartRecruiters│
+                                ┌─────────────┐      Web Scraping        └──────────────────┘
+                                │   Scraper   │ ◄────────────────────────┬──────────────┐
+                                │   Service   │   Scrapling Library      │ Levels.fyi   │
+                                │   (Flask)   │                           │ Simplify     │
+                                └─────────────┘                           │ LinkedIn     │
+                                                                           └──────────────┘
 ```
 
 ## Prerequisites
@@ -217,7 +224,13 @@ internship-scraper/
 ├── server/                       # Backend API (Node.js)
 │   ├── index.js                  # Express server
 │   ├── greenhouseService.js      # Greenhouse API integration
-│   ├── companies.js              # List of company board tokens
+│   ├── leverService.js           # Lever API integration
+│   ├── ashbyService.js           # Ashby API integration
+│   ├── workdayService.js         # Workday API integration
+│   ├── smartRecruitersService.js # SmartRecruiters API integration
+│   ├── scraperJob.js             # Job scheduling and scraping orchestration
+│   ├── database.js               # PostgreSQL database operations
+│   ├── companies.js              # List of company board tokens for all platforms
 │   ├── package.json
 │   └── Dockerfile
 ├── scraper-service/              # Web scraper service (Python)
@@ -244,32 +257,48 @@ internship-scraper/
 
 ## Data Sources
 
-### Greenhouse Job Boards (20+ companies)
+### Greenhouse Job Boards (20 companies)
 
-The backend scrapes internship postings from 20+ companies using Greenhouse:
+The backend scrapes internship postings from 20 companies using Greenhouse:
 
-- Airbnb
-- Slack
-- Stripe
-- Notion
-- Coinbase
-- Databricks
-- Reddit
-- Robinhood
-- Dropbox
-- Square
-- Twitch
-- DoorDash
-- Lyft
-- Snap
-- Discord
-- Shopify
-- Atlassian
-- GitLab
-- Cloudflare
-- Asana
+- Airbnb, Slack, Stripe, Notion, Coinbase
+- Databricks, Reddit, Robinhood, Dropbox, Square
+- Twitch, DoorDash, Lyft, Snap, Discord
+- Shopify, Atlassian, GitLab, Cloudflare, Asana
 
 To add more companies, edit [server/companies.js](server/companies.js) with their Greenhouse board token.
+
+### Lever Job Boards (10 companies)
+
+**URL Format**: `https://jobs.lever.co/{company}` | **API**: `https://api.lever.co/v0/postings/{company}?mode=json`
+
+Companies included:
+- Netflix, Canva, Rippling, Instacart, Grammarly
+- Scale AI, Figma, Brex, Plaid, Airtable
+
+### Ashby Job Boards (8 companies)
+
+**URL Format**: `https://jobs.ashbyhq.com/{company}.json`
+
+Companies included:
+- Anthropic, OpenAI, Ramp, Mercury
+- Anduril, Retool, Watershed, Deel
+
+### Workday (8 companies)
+
+**URL Format**: `https://{subdomain}.myworkdaysite.com/wday/cxs/{org}/{tenant}/jobs`
+
+Large firms included:
+- Amazon, Apple, Microsoft, Salesforce
+- Oracle, IBM, Intel, Cisco
+
+### SmartRecruiters (6 companies)
+
+**API**: `https://api.smartrecruiters.com/v1/companies/{companyId}/postings`
+
+Companies included:
+- Visa, LinkedIn, Bosch
+- IKEA, Sephora, McDonald's
 
 ### Web Scraping Sources (via Scrapling)
 
@@ -282,12 +311,17 @@ The Python scraper service scrapes the following sources:
 
 ## How It Works
 
-1. **Greenhouse Scraping**: Backend fetches job listings from 20+ company Greenhouse boards
-2. **Web Scraping**: Python service uses Scrapling to scrape Levels.fyi, Simplify, and other sources
-3. **Aggregation**: Node.js backend combines internships from both Greenhouse and web scraping
+1. **Multi-Platform Scraping**: Backend fetches job listings from 5 major job board platforms:
+   - **Greenhouse**: JSON API at `boards-api.greenhouse.io`
+   - **Lever**: JSON API at `api.lever.co/v0/postings/{company}`
+   - **Ashby**: JSON feed at `jobs.ashbyhq.com/{company}.json`
+   - **Workday**: JSON via POST to `/wday/cxs/{org}/{tenant}/jobs`
+   - **SmartRecruiters**: REST API at `api.smartrecruiters.com/v1/companies/{id}/postings`
+2. **Web Scraping**: Python service uses Scrapling to scrape Levels.fyi, Simplify, and LinkedIn
+3. **Aggregation**: Node.js backend combines internships from all sources into a unified database
 4. **Filtering**: Intelligently identifies internships by looking for keywords like "intern", "internship", "co-op"
 5. **Categorization**: Analyzes job titles to categorize internships (Software Engineering, Data Science, ML, etc.)
-6. **Caching**: Stores results for 1 hour to improve performance
+6. **Caching**: Stores results in PostgreSQL database with automatic refresh every 6 hours
 7. **Frontend Display**: React app fetches from the backend API and provides filtering/search UI
 
 ## Configuration
@@ -302,17 +336,46 @@ VITE_API_URL=http://localhost:3001
 
 ### Adding More Companies
 
-Edit `server/companies.js` to add more companies that use Greenhouse:
+Edit `server/companies.js` to add more companies. Different platforms have different URL structures:
 
+**Greenhouse**:
 ```javascript
 export const GREENHOUSE_COMPANIES = [
-  { name: 'Company Name', token: 'company_greenhouse_token' },
-  // Add more...
+  { name: 'Company Name', token: 'companyname' },
+];
+```
+Find tokens at: `https://boards.greenhouse.io/{token}`
+
+**Lever**:
+```javascript
+export const LEVER_COMPANIES = [
+  { name: 'Company Name', token: 'companyname' },
+];
+```
+Find tokens at: `https://jobs.lever.co/{token}`
+
+**Ashby**:
+```javascript
+export const ASHBY_COMPANIES = [
+  { name: 'Company Name', token: 'companyname' },
+];
+```
+Find tokens at: `https://jobs.ashbyhq.com/{token}`
+
+**Workday** (requires org, tenant, and subdomain):
+```javascript
+export const WORKDAY_COMPANIES = [
+  { name: 'Company', org: 'company', tenant: 'careers', subdomain: 'wd5' },
 ];
 ```
 
-To find a company's Greenhouse board token, visit their careers page and look for URLs like:
-`https://boards.greenhouse.io/companyname` - the token is `companyname`
+**SmartRecruiters**:
+```javascript
+export const SMARTRECRUITERS_COMPANIES = [
+  { name: 'Company Name', companyId: 'CompanyName' },
+];
+```
+Find at: `https://api.smartrecruiters.com/v1/companies/{companyId}/postings`
 
 ## Data Persistence
 
@@ -322,10 +385,11 @@ To find a company's Greenhouse board token, visit their careers page and look fo
 
 ## Performance
 
-- Backend caches all internship data for 1 hour
-- Typical response time: <100ms (cached) or 5-10s (fresh fetch from 20 companies)
+- Backend stores all internship data in PostgreSQL database
+- Automatic refresh every 6 hours via cron job
+- Typical response time: <100ms (from database)
 - No rate limiting on GET requests
-- Concurrent fetching from all companies
+- Concurrent fetching from all companies and platforms (50+ sources)
 
 ## Troubleshooting
 
