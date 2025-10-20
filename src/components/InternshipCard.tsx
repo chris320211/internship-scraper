@@ -1,5 +1,6 @@
-import { MapPin, Calendar, DollarSign, Clock, Bookmark, ExternalLink, CheckCircle } from 'lucide-react';
+import { MapPin, Calendar, DollarSign, Clock, Bookmark, ExternalLink, CheckCircle, Building2 } from 'lucide-react';
 import { Internship } from '../lib/mockData';
+import { getCompanyLogo } from '../lib/companyLogos';
 
 interface InternshipCardProps {
   internship: Internship;
@@ -23,16 +24,23 @@ export default function InternshipCard({ internship, isSaved, onToggleSave }: In
   };
 
   const companyName = internship.company_name || 'Unknown Company';
+  const companyLogo = getCompanyLogo(companyName);
 
   return (
     <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all p-6 border border-slate-200 hover:border-blue-300">
       <div className="flex justify-between items-start mb-4">
         <div className="flex-1">
           <div className="flex items-start gap-3 mb-2">
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg px-3 py-2 flex items-center justify-center text-white font-semibold text-sm shadow-md max-w-[160px]">
-              <span className="truncate" title={companyName}>
-                {companyName}
-              </span>
+            <div className="bg-white rounded-lg p-2 flex items-center justify-center shadow-md border border-slate-200 w-16 h-16 flex-shrink-0">
+              {companyLogo ? (
+                <img
+                  src={companyLogo}
+                  alt={`${companyName} logo`}
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <Building2 className="w-8 h-8 text-slate-400" />
+              )}
             </div>
             <div>
               <h3 className="text-xl font-bold text-slate-900">{internship.position_title}</h3>

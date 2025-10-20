@@ -10,7 +10,13 @@
       "Bash(python3:*)",
       "Bash(curl:*)",
       "Bash(node:*)",
-      "Bash(/dev/null)"
+      "Bash(/dev/null)",
+      "Bash(mkdir:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run dev:*)",
+      "Bash(open http://localhost:5173)",
+      "Bash(cat:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []
