@@ -16,7 +16,10 @@
       "Bash(npm run dev:*)",
       "Bash(open http://localhost:5173)",
       "Bash(cat:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(docker network prune:*)",
+      "Bash(xargs -r docker stop)",
+      "Bash(xargs:*)"
     ],
     "deny": [],
     "ask": []
