@@ -1,5 +1,13 @@
 import pkg from 'pg';
+import { fileURLToPath } from 'url';
+import path from 'path';
+import { readFile } from 'fs/promises';
 const { Pool } = pkg;
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const SCHEMA_PATH = path.resolve(__dirname, '../database/schema.sql');
+let schemaInitialization;
 
 function decodeHtmlEntities(text) {
   if (!text || typeof text !== 'string') {
@@ -61,6 +69,10 @@ function isSearchUrl(url) {
     const hostname = parsed.hostname.toLowerCase();
     const pathname = parsed.pathname.toLowerCase();
     const query = parsed.search.toLowerCase();
+    const searchParams = new URLSearchParams(parsed.search);
+    const hasJobIdentifier = ['gh_jid', 'gh_src', 'lever_origin', 'lever-source', 'gh_adid'].some((key) =>
+      searchParams.has(key)
+    );
 
     const exactMatches = new Set(['', '/', '/jobs', '/careers', '/careers/']);
     if (exactMatches.has(pathname)) {
@@ -76,11 +88,14 @@ function isSearchUrl(url) {
       '/search-careers',
       '/search/',
     ];
-    if (substrings.some((segment) => pathname.includes(segment))) {
+    if (!hasJobIdentifier && substrings.some((segment) => pathname.includes(segment))) {
       return true;
     }
 
-    if (query.includes('search=') || query.includes('keyword=') || query.includes('keywords=') || query.includes('q=')) {
+    if (
+      !hasJobIdentifier &&
+      (query.includes('search=') || query.includes('keyword=') || query.includes('keywords=') || query.includes('q='))
+    ) {
       return true;
     }
 
@@ -118,6 +133,40 @@ pool.on('connect', () => {
 pool.on('error', (err) => {
   console.error('❌ Unexpected database error:', err);
 });
+
+async function ensureSchema() {
+  let schema;
+  try {
+    schema = await readFile(SCHEMA_PATH, 'utf-8');
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      console.warn(`⚠️  Schema file not found at ${SCHEMA_PATH}; skipping automatic schema ensure`);
+      return;
+    }
+    throw error;
+  }
+  const client = await pool.connect();
+
+  try {
+    await client.query(schema);
+    console.log('📦 PostgreSQL schema ensured');
+  } finally {
+    client.release();
+  }
+}
+
+export function initializeDatabase() {
+  if (!schemaInitialization) {
+    schemaInitialization = ensureSchema().catch((error) => {
+      console.error('❌ Failed to initialize PostgreSQL schema:', error);
+      throw error;
+    });
+  }
+
+  return schemaInitialization;
+}
+
+export const databaseReady = initializeDatabase();
 
 /**
  * Upsert an internship into the database
@@ -243,7 +292,7 @@ export async function bulkUpsertInternships(internships) {
  * Get all active internships with filters
  */
 export async function getInternships(filters = {}) {
-  const conditions = ['is_active = true'];
+  const conditions = ['is_active = true', "COALESCE(application_url, '') <> ''"];
   const values = [];
   let paramCount = 1;
 

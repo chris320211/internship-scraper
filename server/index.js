@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { getInternships, getDatabaseStats, getScrapingStats } from './database.js';
+import { getInternships, getDatabaseStats, getScrapingStats, databaseReady } from './database.js';
 import { setupScraperJobs, runInitialScrape, runAllScrapers } from './scraperJob.js';
 
 const app = express();
@@ -104,21 +104,32 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
-// Start server
-app.listen(PORT, async () => {
+function onServerStart() {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
   console.log(`💼 Internships API: http://localhost:${PORT}/api/internships`);
   console.log(`🔄 Refresh API: http://localhost:${PORT}/api/internships/refresh`);
   console.log(`📈 Stats API: http://localhost:${PORT}/api/stats`);
 
-  // Setup automated scraping jobs
   setupScraperJobs();
 
-  // Run initial scrape on startup (comment out if you want to skip)
   if (process.env.SKIP_INITIAL_SCRAPE !== 'true') {
-    setTimeout(async () => {
-      await runInitialScrape();
-    }, 5000); // Wait 5 seconds for database to be ready
+    setTimeout(() => {
+      runInitialScrape().catch((error) => {
+        console.error('Failed to complete initial scrape:', error);
+      });
+    }, 5000);
   }
-});
+}
+
+async function bootstrap() {
+  try {
+    await databaseReady;
+    app.listen(PORT, onServerStart);
+  } catch (error) {
+    console.error('Failed to start server because the database is not ready:', error);
+    process.exit(1);
+  }
+}
+
+bootstrap();

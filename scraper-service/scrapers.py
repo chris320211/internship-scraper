@@ -3,11 +3,13 @@ Web scrapers for various internship sources using Scrapling
 """
 from scrapling.fetchers import Fetcher, StealthyFetcher
 from typing import List, Dict, Optional
+import os
 import re
 from datetime import datetime, date
 from urllib.parse import urljoin, urlparse
 from html import unescape
 from dateutil import parser as date_parser
+import requests
 
 DATE_KEYWORDS = re.compile(
     r'(deadline|apply by|apply before|applications? (?:due|close|deadline)|'
@@ -377,6 +379,96 @@ class SimplifyScraper(InternshipScraper):
             return []
 
 
+class SerpApiLinkedInScraper(InternshipScraper):
+    """Fetch LinkedIn internships via SerpApi"""
+
+    API_ENDPOINT = "https://serpapi.com/search.json"
+
+    def __init__(self):
+        super().__init__()
+        self.api_key = os.environ.get("SERPAPI_API_KEY") or os.environ.get("SERPAPI_KEY")
+
+    def _build_application_url(self, job: Dict) -> str:
+        if link := job.get("link"):
+            return link
+        if job_id := job.get("job_id"):
+            return f"https://www.linkedin.com/jobs/view/{job_id}"
+        return ""
+
+    def _normalize_posted_date(self, job: Dict) -> str:
+        detected = job.get("detected_extensions") or {}
+        posted_text = detected.get("posted_at") or detected.get("posted_at_date")
+        parsed = _parse_date_string(posted_text) if posted_text else None
+        if parsed:
+            return f"{parsed}T00:00:00Z"
+        return datetime.utcnow().isoformat()
+
+    def scrape(self, keywords: str = "software engineering intern") -> List[Dict]:
+        """Invoke SerpApi LinkedIn engine to gather internships"""
+        if not self.api_key:
+            print("SerpApi key not configured, skipping LinkedIn scraper")
+            return []
+
+        params = {
+            "engine": "linkedin_jobs",
+            "q": keywords,
+            "api_key": self.api_key,
+            "remote": "false",
+        }
+
+        try:
+            response = requests.get(self.API_ENDPOINT, params=params, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+        except requests.RequestException as exc:
+            print(f"Error contacting SerpApi: {exc}")
+            return []
+        except ValueError:
+            print("Unable to decode SerpApi response as JSON")
+            return []
+
+        results = data.get("jobs_results") or []
+        jobs = []
+
+        for job in results:
+            title = job.get("title", "Internship").strip()
+            company = job.get("company_name") or job.get("company") or "Unknown Company"
+            description = job.get("description") or job.get("snippet") or ""
+
+            if not self.is_internship(title, description):
+                continue
+
+            application_url = self._build_application_url(job)
+            if not application_url:
+                continue
+
+            deadline = extract_application_deadline(
+                job.get("description"),
+                job.get("snippet"),
+                *(job.get("extensions") or []),
+                *(job.get("detected_extensions") or {}).values(),
+            )
+
+            job_id = job.get("job_id") or hash(f"{company}-{title}-{application_url}")
+
+            jobs.append({
+                "id": f"linkedin-serpapi-{job_id}",
+                "company_name": company,
+                "position_title": title,
+                "description": description if description else f"Internship opportunity at {company}",
+                "job_type": self.categorize_job_type(title),
+                "location": job.get("location") or job.get("city") or "Various",
+                "eligible_years": ["Sophomore", "Junior", "Senior", "Graduate"],
+                "posted_date": self._normalize_posted_date(job),
+                "application_deadline": deadline,
+                "application_url": application_url,
+                "is_active": True,
+                "source": "LinkedIn (SerpApi)",
+            })
+
+        return jobs
+
+
 def scrape_all_sources(keywords: str = "software engineering intern") -> List[Dict]:
     """Scrape all sources and combine results"""
     all_jobs = []
@@ -385,6 +477,7 @@ def scrape_all_sources(keywords: str = "software engineering intern") -> List[Di
         # IndeedScraper(),
         LevelsFyiScraper(),
         SimplifyScraper(),
+        SerpApiLinkedInScraper(),
         # LinkedInScraper(),  # LinkedIn might require auth
     ]
 

@@ -75,10 +75,10 @@ def sources():
                 'status': 'disabled'  # May require anti-bot bypass
             },
             {
-                'name': 'LinkedIn',
-                'description': 'Professional network job listings',
+                'name': 'LinkedIn (SerpApi)',
+                'description': 'Professional network job listings fetched via SerpApi',
                 'url': 'https://www.linkedin.com/jobs',
-                'status': 'disabled'  # Requires authentication
+                'status': 'requires SERPAPI_API_KEY'
             }
         ]
     })

@@ -27,6 +27,7 @@ services:
       - "3002:3002"
     environment:
       - PORT=3002
+      - SERPAPI_API_KEY=${SERPAPI_API_KEY:-}
     restart: unless-stopped
 
   # Backend API server

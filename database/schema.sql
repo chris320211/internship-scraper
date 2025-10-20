@@ -67,6 +67,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to auto-update updated_at
+DROP TRIGGER IF EXISTS update_internships_updated_at ON internships;
 CREATE TRIGGER update_internships_updated_at
     BEFORE UPDATE ON internships
     FOR EACH ROW

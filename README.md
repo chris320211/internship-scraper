@@ -12,6 +12,7 @@ A comprehensive internship search application that aggregates real internship po
 - **Save Opportunities**: Bookmark internships to review later (saved in browser localStorage)
 - **Smart Caching**: Backend caches results for 1 hour to improve performance
 - **Auto-Categorization**: Automatically categorizes internships by type (SWE, Data Science, ML, etc.)
+- **LinkedIn Coverage**: Optional SerpApi integration adds LinkedIn job listings alongside Greenhouse and curated sources
 
 ## Tech Stack
 
@@ -32,7 +33,7 @@ A comprehensive internship search application that aggregates real internship po
 - **Runtime**: Python 3.11
 - **Framework**: Flask
 - **Scraping**: [Scrapling](https://github.com/D4Vinci/Scrapling) - Advanced web scraping library
-- **Sources**: Levels.fyi, Simplify GitHub repo, Indeed (optional), LinkedIn (optional)
+- **Sources**: Levels.fyi, Simplify GitHub repo, LinkedIn (via SerpApi), Indeed (optional)
 
 ## Architecture
 
@@ -60,6 +61,17 @@ A comprehensive internship search application that aggregates real internship po
 
 ## Local Development Setup
 
+### Database Setup (PostgreSQL)
+
+- Ensure a PostgreSQL instance is running and reachable using the credentials in `.env` (defaults to `postgres:postgres@localhost:5432/internship_scraper`).
+- The backend automatically executes `database/schema.sql` on startup, so the required tables and triggers will be created or updated the first time the API connects.
+- When using Docker, the schema is applied by the `db` service; for native development, start PostgreSQL manually (e.g., `docker compose up db` or a local service) before running the backend.
+
+### Optional: LinkedIn via SerpApi
+
+- Set `SERPAPI_API_KEY` in `.env` (and export it in your shell/Docker environment).
+- The scraper service will automatically pull LinkedIn job listings through SerpApi when the key is provided; without it, the integration is skipped.
+- SerpApi usage is billed separately—monitor your quota if you enable this feature.
 ### Option A: Docker Setup (Recommended)
 
 This will run the frontend, backend API, and scraper service in Docker containers.
