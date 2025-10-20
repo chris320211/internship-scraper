@@ -21,7 +21,10 @@
       "Bash(xargs -r docker stop)",
       "Bash(xargs:*)",
       "Bash(SKIP_INITIAL_SCRAPE=true npm start)",
-      "Bash(docker ps:*)"
+      "Bash(docker ps:*)",
+      "Bash(awk:*)",
+      "Bash(open:*)",
+      "Bash(docker network ls)"
     ],
     "deny": [],
     "ask": []

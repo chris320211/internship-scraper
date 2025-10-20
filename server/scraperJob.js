@@ -4,6 +4,7 @@ import { fetchAllLeverInternships } from './leverService.js';
 import { fetchAllAshbyInternships } from './ashbyService.js';
 import { fetchAllWorkdayInternships } from './workdayService.js';
 import { fetchAllSmartRecruitersInternships } from './smartRecruitersService.js';
+import { fetchAllGitHubInternships } from './githubService.js';
 import {
   LEVER_COMPANIES,
   ASHBY_COMPANIES,
@@ -236,6 +237,50 @@ async function scrapeSmartRecruiters() {
 }
 
 /**
+ * Fetch and store GitHub repository internships
+ */
+async function scrapeGitHub() {
+  console.log('🔄 Starting GitHub repository scraping job...');
+  const startTime = Date.now();
+
+  try {
+    const internships = await fetchAllGitHubInternships();
+
+    if (internships.length === 0) {
+      console.log('⚠️  No internships found from GitHub repositories');
+      return { success: true, newCount: 0, updatedCount: 0 };
+    }
+
+    const { newCount, updatedCount } = await bulkUpsertInternships(internships);
+
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+
+    await logScraping('github', {
+      totalJobs: internships.length,
+      internships: internships.length,
+      newCount,
+      updatedCount,
+      status: 'success',
+    });
+
+    console.log(`✅ GitHub scraping completed in ${duration}s`);
+    console.log(`   - Total internships: ${internships.length}`);
+    console.log(`   - New: ${newCount}, Updated: ${updatedCount}`);
+
+    return { success: true, newCount, updatedCount };
+  } catch (error) {
+    console.error('❌ GitHub scraping failed:', error.message);
+
+    await logScraping('github', {
+      status: 'failed',
+      error: error.message,
+    });
+
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Fetch and store web-scraped internships
  */
 async function scrapeWeb() {
@@ -297,6 +342,7 @@ export async function runAllScrapers() {
   const results = await Promise.allSettled([
     scrapeGreenhouse(),
     scrapeLever(),
+    scrapeGitHub(),      // High priority - curated data
     scrapeAshby(),
     scrapeWorkday(),
     scrapeSmartRecruiters(),
@@ -312,7 +358,7 @@ export async function runAllScrapers() {
   const duration = ((Date.now() - startTime) / 1000).toFixed(2);
   console.log(`✅ All scraping jobs completed in ${duration}s\n`);
 
-  const sources = ['greenhouse', 'lever', 'ashby', 'workday', 'smartrecruiters', 'web_scraping'];
+  const sources = ['greenhouse', 'lever', 'github', 'ashby', 'workday', 'smartrecruiters', 'web_scraping'];
   return results.map((result, index) => ({
     source: sources[index],
     ...result.value,
