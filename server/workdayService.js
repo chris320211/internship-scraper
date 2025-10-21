@@ -1,3 +1,5 @@
+import { categorizeJobType } from './jobTypeClassifier.js';
+
 /**
  * Workday Job Board API Integration
  * Workday job listings accessible via /wday/cxs/{org}/{tenant}/jobs
@@ -57,52 +59,6 @@ function isInternship(job) {
 }
 
 /**
- * Determine job type from title
- */
-function categorizeJobType(title) {
-  const titleLower = title.toLowerCase();
-
-  if (titleLower.includes('software') || titleLower.includes('swe') || titleLower.includes('engineer')) {
-    return 'Software Engineering';
-  }
-  if (titleLower.includes('data scien')) {
-    return 'Data Science';
-  }
-  if (titleLower.includes('machine learning') || titleLower.includes('ml ')) {
-    return 'Machine Learning';
-  }
-  if (titleLower.includes('product manage') || titleLower.includes('pm ')) {
-    return 'Product Management';
-  }
-  if (titleLower.includes('mobile') || titleLower.includes('ios') || titleLower.includes('android')) {
-    return 'Mobile Development';
-  }
-  if (titleLower.includes('security') || titleLower.includes('cybersecurity')) {
-    return 'Security Engineering';
-  }
-  if (titleLower.includes('devops') || titleLower.includes('sre')) {
-    return 'DevOps';
-  }
-  if (titleLower.includes('design') || titleLower.includes('ui') || titleLower.includes('ux')) {
-    return 'UI/UX Design';
-  }
-  if (titleLower.includes('data engineer')) {
-    return 'Data Engineering';
-  }
-  if (titleLower.includes('frontend') || titleLower.includes('front-end')) {
-    return 'Frontend Development';
-  }
-  if (titleLower.includes('backend') || titleLower.includes('back-end')) {
-    return 'Backend Development';
-  }
-  if (titleLower.includes('fullstack') || titleLower.includes('full-stack')) {
-    return 'Full Stack Development';
-  }
-
-  return 'Other';
-}
-
-/**
  * Determine eligible years from job title/description
  */
 function determineEligibleYears(job) {
@@ -145,7 +101,7 @@ function transformJob(job, companyName, org, tenant, subdomain) {
     company_name: companyName,
     position_title: job.title,
     description: job.bulletFields?.join(' • ') || 'No description available',
-    job_type: categorizeJobType(job.title),
+    job_type: categorizeJobType(job.title, job.bulletFields?.join(' ')),
     location: location,
     eligible_years: determineEligibleYears(job),
     posted_date: job.postedOn ? new Date(job.postedOn).toISOString() : new Date().toISOString(),

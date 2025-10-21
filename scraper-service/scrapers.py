@@ -28,6 +28,180 @@ DATE_PATTERNS = [
     ),
 ]
 
+JOB_TYPE_PATTERNS = [
+    (
+        'Machine Learning',
+        [
+            re.compile(r'machine learning', re.IGNORECASE),
+            re.compile(r'\bml\b', re.IGNORECASE),
+            re.compile(r'deep learning', re.IGNORECASE),
+            re.compile(r'computer vision', re.IGNORECASE),
+            re.compile(r'artificial intelligence', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Data Science',
+        [
+            re.compile(r'data science', re.IGNORECASE),
+            re.compile(r'data scientist', re.IGNORECASE),
+            re.compile(r'data analytics', re.IGNORECASE),
+            re.compile(r'data analyst', re.IGNORECASE),
+            re.compile(r'business intelligence', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Data Engineering',
+        [
+            re.compile(r'data engineer', re.IGNORECASE),
+            re.compile(r'data platform', re.IGNORECASE),
+            re.compile(r'analytics engineer', re.IGNORECASE),
+            re.compile(r'data pipeline', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Quantitative Finance',
+        [
+            re.compile(r'quantitative', re.IGNORECASE),
+            re.compile(r'\bquant\b', re.IGNORECASE),
+            re.compile(r'algorithmic trading', re.IGNORECASE),
+            re.compile(r'trading analyst', re.IGNORECASE),
+            re.compile(r'derivatives', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Research',
+        [
+            re.compile(r'research scientist', re.IGNORECASE),
+            re.compile(r'research engineer', re.IGNORECASE),
+            re.compile(r'research internship', re.IGNORECASE),
+            re.compile(r'r&d', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Full Stack Development',
+        [
+            re.compile(r'full[-\s]?stack', re.IGNORECASE),
+            re.compile(r'fullstack', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Frontend Development',
+        [
+            re.compile(r'front[-\s]?end', re.IGNORECASE),
+            re.compile(r'frontend', re.IGNORECASE),
+            re.compile(r'web developer', re.IGNORECASE),
+            re.compile(r'ui engineer', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Backend Development',
+        [
+            re.compile(r'back[-\s]?end', re.IGNORECASE),
+            re.compile(r'backend', re.IGNORECASE),
+            re.compile(r'api developer', re.IGNORECASE),
+            re.compile(r'platform engineer', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Software Engineering',
+        [
+            re.compile(r'software engineer', re.IGNORECASE),
+            re.compile(r'software developer', re.IGNORECASE),
+            re.compile(r'software engineering', re.IGNORECASE),
+            re.compile(r'\bswe\b', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Mobile Development',
+        [
+            re.compile(r'mobile', re.IGNORECASE),
+            re.compile(r'\bios\b', re.IGNORECASE),
+            re.compile(r'android', re.IGNORECASE),
+            re.compile(r'react native', re.IGNORECASE),
+            re.compile(r'swift', re.IGNORECASE),
+            re.compile(r'kotlin', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Security Engineering',
+        [
+            re.compile(r'security engineer', re.IGNORECASE),
+            re.compile(r'cybersecurity', re.IGNORECASE),
+            re.compile(r'information security', re.IGNORECASE),
+            re.compile(r'appsec', re.IGNORECASE),
+        ],
+    ),
+    (
+        'DevOps',
+        [
+            re.compile(r'devops', re.IGNORECASE),
+            re.compile(r'site reliability', re.IGNORECASE),
+            re.compile(r'\bsre\b', re.IGNORECASE),
+            re.compile(r'infrastructure', re.IGNORECASE),
+            re.compile(r'cloud engineer', re.IGNORECASE),
+            re.compile(r'platform reliability', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Quality Assurance',
+        [
+            re.compile(r'\bqa\b', re.IGNORECASE),
+            re.compile(r'quality assurance', re.IGNORECASE),
+            re.compile(r'test engineer', re.IGNORECASE),
+            re.compile(r'testing engineer', re.IGNORECASE),
+            re.compile(r'automation engineer', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Hardware Engineering',
+        [
+            re.compile(r'hardware engineer', re.IGNORECASE),
+            re.compile(r'electrical engineer', re.IGNORECASE),
+            re.compile(r'electronics engineer', re.IGNORECASE),
+            re.compile(r'asic', re.IGNORECASE),
+            re.compile(r'fpga', re.IGNORECASE),
+            re.compile(r'semiconductor', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Embedded Systems',
+        [
+            re.compile(r'embedded engineer', re.IGNORECASE),
+            re.compile(r'embedded systems', re.IGNORECASE),
+            re.compile(r'firmware', re.IGNORECASE),
+            re.compile(r'\biot\b', re.IGNORECASE),
+            re.compile(r'real-time systems', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Robotics',
+        [
+            re.compile(r'robotics', re.IGNORECASE),
+            re.compile(r'robotic engineer', re.IGNORECASE),
+            re.compile(r'autonomous systems', re.IGNORECASE),
+            re.compile(r'mechatronics', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Product Management',
+        [
+            re.compile(r'product manager', re.IGNORECASE),
+            re.compile(r'product management', re.IGNORECASE),
+            re.compile(r'product strategy', re.IGNORECASE),
+        ],
+    ),
+    (
+        'UI/UX Design',
+        [
+            re.compile(r'user experience', re.IGNORECASE),
+            re.compile(r'user interface', re.IGNORECASE),
+            re.compile(r'ux design', re.IGNORECASE),
+            re.compile(r'ui design', re.IGNORECASE),
+            re.compile(r'product design', re.IGNORECASE),
+            re.compile(r'interaction design', re.IGNORECASE),
+        ],
+    ),
+]
 
 def _parse_date_string(raw_value: str) -> Optional[str]:
     """Attempt to parse a string into ISO date format."""
@@ -104,26 +278,13 @@ class InternshipScraper:
         keywords = ['intern', 'internship', 'co-op', 'coop', 'summer program', 'summer 2025', 'summer 2026']
         return any(keyword in text for keyword in keywords)
 
-    def categorize_job_type(self, title: str) -> str:
-        """Categorize job type from title"""
-        title_lower = title.lower()
+    def categorize_job_type(self, title: str, description: str = "") -> str:
+        """Categorize job type from title and optional description"""
+        text = f"{title or ''} {description or ''}"
 
-        if 'software' in title_lower or 'swe' in title_lower or 'engineer' in title_lower:
-            return 'Software Engineering'
-        elif 'data scien' in title_lower:
-            return 'Data Science'
-        elif 'machine learning' in title_lower or 'ml ' in title_lower:
-            return 'Machine Learning'
-        elif 'product manage' in title_lower or 'pm ' in title_lower:
-            return 'Product Management'
-        elif 'mobile' in title_lower or 'ios' in title_lower or 'android' in title_lower:
-            return 'Mobile Development'
-        elif 'security' in title_lower or 'cybersecurity' in title_lower:
-            return 'Security Engineering'
-        elif 'devops' in title_lower or 'sre' in title_lower:
-            return 'DevOps'
-        elif 'design' in title_lower or 'ui' in title_lower or 'ux' in title_lower:
-            return 'UI/UX Design'
+        for label, patterns in JOB_TYPE_PATTERNS:
+            if any(pattern.search(text) for pattern in patterns):
+                return label
 
         return 'Other'
 

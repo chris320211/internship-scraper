@@ -1,3 +1,5 @@
+import { categorizeJobType } from './jobTypeClassifier.js';
+
 /**
  * Ashby Job Board API Integration
  * Ashby boards are accessible at https://jobs.ashbyhq.com/{company}
@@ -37,52 +39,6 @@ function isInternship(job) {
   return internshipKeywords.some(keyword =>
     title.includes(keyword) || description.includes(keyword) || department.includes(keyword)
   );
-}
-
-/**
- * Determine job type from title
- */
-function categorizeJobType(title) {
-  const titleLower = title.toLowerCase();
-
-  if (titleLower.includes('software') || titleLower.includes('swe') || titleLower.includes('engineer')) {
-    return 'Software Engineering';
-  }
-  if (titleLower.includes('data scien')) {
-    return 'Data Science';
-  }
-  if (titleLower.includes('machine learning') || titleLower.includes('ml ')) {
-    return 'Machine Learning';
-  }
-  if (titleLower.includes('product manage') || titleLower.includes('pm ')) {
-    return 'Product Management';
-  }
-  if (titleLower.includes('mobile') || titleLower.includes('ios') || titleLower.includes('android')) {
-    return 'Mobile Development';
-  }
-  if (titleLower.includes('security') || titleLower.includes('cybersecurity')) {
-    return 'Security Engineering';
-  }
-  if (titleLower.includes('devops') || titleLower.includes('sre')) {
-    return 'DevOps';
-  }
-  if (titleLower.includes('design') || titleLower.includes('ui') || titleLower.includes('ux')) {
-    return 'UI/UX Design';
-  }
-  if (titleLower.includes('data engineer')) {
-    return 'Data Engineering';
-  }
-  if (titleLower.includes('frontend') || titleLower.includes('front-end')) {
-    return 'Frontend Development';
-  }
-  if (titleLower.includes('backend') || titleLower.includes('back-end')) {
-    return 'Backend Development';
-  }
-  if (titleLower.includes('fullstack') || titleLower.includes('full-stack')) {
-    return 'Full Stack Development';
-  }
-
-  return 'Other';
 }
 
 /**
@@ -147,7 +103,7 @@ function transformJob(job, companyName) {
     company_name: companyName,
     position_title: job.title,
     description: cleanDescription(job.description),
-    job_type: categorizeJobType(job.title),
+    job_type: categorizeJobType(job.title, job.description),
     location: location,
     eligible_years: determineEligibleYears(job),
     posted_date: job.publishedDate ? new Date(job.publishedDate).toISOString() : new Date().toISOString(),

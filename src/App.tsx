@@ -6,6 +6,7 @@ import SearchFilters from './components/SearchFilters';
 import { Internship } from './lib/mockData';
 import { localStorageDB } from './lib/localStorage';
 import { api } from './lib/api';
+import { JOB_TYPE_KEYWORDS } from './lib/jobTypes';
 
 function App() {
   const [showSetup, setShowSetup] = useState(true);
@@ -61,31 +62,20 @@ function App() {
   const parsePromptForFilters = (prompt: string) => {
     const lowerPrompt = prompt.toLowerCase();
 
-    const jobTypes = [];
-    if (lowerPrompt.includes('swe') || lowerPrompt.includes('software engineering')) {
-      jobTypes.push('Software Engineering');
-    }
-    if (lowerPrompt.includes('data science')) {
-      jobTypes.push('Data Science');
-    }
-    if (lowerPrompt.includes('machine learning') || lowerPrompt.includes('ml')) {
-      jobTypes.push('Machine Learning');
-    }
-    if (lowerPrompt.includes('product management') || lowerPrompt.includes('pm')) {
-      jobTypes.push('Product Management');
-    }
-    if (lowerPrompt.includes('mobile')) {
-      jobTypes.push('Mobile Development');
-    }
-    if (lowerPrompt.includes('security')) {
-      jobTypes.push('Security Engineering');
-    }
-    if (lowerPrompt.includes('devops')) {
-      jobTypes.push('DevOps');
-    }
-    if (lowerPrompt.includes('design') || lowerPrompt.includes('ui') || lowerPrompt.includes('ux')) {
-      jobTypes.push('UI/UX Design');
-    }
+    const jobTypes = new Set<string>();
+
+    Object.entries(JOB_TYPE_KEYWORDS).forEach(([jobType, keywords]) => {
+      const matches = keywords.some((keyword) => {
+        if (keyword instanceof RegExp) {
+          return keyword.test(prompt);
+        }
+        return lowerPrompt.includes(keyword.toLowerCase());
+      });
+
+      if (matches) {
+        jobTypes.add(jobType);
+      }
+    });
 
     const years = [];
     if (lowerPrompt.includes('freshman') || lowerPrompt.includes('freshmen')) {
@@ -106,7 +96,7 @@ function App() {
 
     const remote = lowerPrompt.includes('remote');
 
-    return { jobTypes, years, remote };
+    return { jobTypes: Array.from(jobTypes), years, remote };
   };
 
   const handlePromptComplete = (prompt: string) => {

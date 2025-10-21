@@ -1,3 +1,5 @@
+import { categorizeJobType } from './jobTypeClassifier.js';
+
 /**
  * GitHub Repository Data Integration
  * Fetches curated internship lists from popular GitHub repositories
@@ -58,55 +60,6 @@ async function fetchGitHubData(source) {
     console.error(`Error fetching ${source.name}:`, error.message);
     return null;
   }
-}
-
-/**
- * Determine job type from title
- */
-function categorizeJobType(title) {
-  const titleLower = title.toLowerCase();
-
-  if (titleLower.includes('software') || titleLower.includes('swe') || titleLower.includes('engineer')) {
-    return 'Software Engineering';
-  }
-  if (titleLower.includes('data scien')) {
-    return 'Data Science';
-  }
-  if (titleLower.includes('machine learning') || titleLower.includes('ml ') || titleLower.includes('ai ')) {
-    return 'Machine Learning';
-  }
-  if (titleLower.includes('product manage') || titleLower.includes('pm ')) {
-    return 'Product Management';
-  }
-  if (titleLower.includes('mobile') || titleLower.includes('ios') || titleLower.includes('android')) {
-    return 'Mobile Development';
-  }
-  if (titleLower.includes('security') || titleLower.includes('cybersecurity')) {
-    return 'Security Engineering';
-  }
-  if (titleLower.includes('devops') || titleLower.includes('sre')) {
-    return 'DevOps';
-  }
-  if (titleLower.includes('design') || titleLower.includes('ui') || titleLower.includes('ux')) {
-    return 'UI/UX Design';
-  }
-  if (titleLower.includes('data engineer')) {
-    return 'Data Engineering';
-  }
-  if (titleLower.includes('frontend') || titleLower.includes('front-end')) {
-    return 'Frontend Development';
-  }
-  if (titleLower.includes('backend') || titleLower.includes('back-end')) {
-    return 'Backend Development';
-  }
-  if (titleLower.includes('fullstack') || titleLower.includes('full-stack') || titleLower.includes('full stack')) {
-    return 'Full Stack Development';
-  }
-  if (titleLower.includes('quant')) {
-    return 'Quantitative';
-  }
-
-  return 'Other';
 }
 
 /**
@@ -175,7 +128,7 @@ function parseSimplifyFormat(data, sourceName) {
       company_name: job.company_name || job.company || 'Unknown',
       position_title: job.title || job.role || 'Internship',
       description: job.description || `${job.title || 'Internship'} at ${job.company_name || job.company}`,
-      job_type: categorizeJobType(job.title || job.role || ''),
+      job_type: categorizeJobType(job.title || job.role || '', job.description || ''),
       location: job.location || job.locations?.join(', ') || 'Remote',
       eligible_years: determineEligibleYears(job),
       posted_date: postedDate,
@@ -214,7 +167,7 @@ function parseCodingCrashkourseFormat(data, sourceName) {
       company_name: job.company || job.company_name || 'Unknown',
       position_title: job.title || job.position || 'Internship',
       description: job.description || `${job.title || 'Internship'} at ${job.company || job.company_name}`,
-      job_type: categorizeJobType(job.title || job.position || ''),
+      job_type: categorizeJobType(job.title || job.position || '', job.description || ''),
       location: job.location || 'Remote',
       eligible_years: determineEligibleYears(job),
       posted_date: job.posted || job.date || new Date().toISOString(),

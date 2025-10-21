@@ -1,4 +1,5 @@
 import { Search, SlidersHorizontal, X } from 'lucide-react';
+import { JOB_TYPES } from '../lib/jobTypes';
 
 interface SearchFiltersProps {
   searchQuery: string;
@@ -12,17 +13,6 @@ interface SearchFiltersProps {
   showActiveFilters: boolean;
   onToggleFilters: () => void;
 }
-
-const JOB_TYPES = [
-  'Software Engineering',
-  'Data Science',
-  'Machine Learning',
-  'Product Management',
-  'Mobile Development',
-  'Security Engineering',
-  'DevOps',
-  'UI/UX Design',
-];
 
 const CLASS_YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate'];
 
@@ -130,8 +120,8 @@ export default function SearchFilters({
             {activeFilterCount > 0 && (
               <button
                 onClick={() => {
-                  selectedJobTypes.forEach(() => onJobTypeToggle(selectedJobTypes[0]));
-                  selectedYears.forEach(() => onYearToggle(selectedYears[0]));
+                  selectedJobTypes.forEach((type) => onJobTypeToggle(type));
+                  selectedYears.forEach((year) => onYearToggle(year));
                   if (showRemoteOnly) onRemoteOnlyToggle();
                 }}
                 className="text-sm text-slate-600 hover:text-slate-900 font-medium flex items-center gap-1"

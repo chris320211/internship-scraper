@@ -1,3 +1,5 @@
+import { categorizeJobType } from './jobTypeClassifier.js';
+
 /**
  * SmartRecruiters API Integration
  * Public REST endpoint: https://api.smartrecruiters.com/v1/companies/{companyId}/postings
@@ -39,52 +41,6 @@ function isInternship(job) {
   return internshipKeywords.some(keyword =>
     title.includes(keyword) || typeLabel.includes(keyword) || experienceLevel.includes(keyword)
   );
-}
-
-/**
- * Determine job type from title
- */
-function categorizeJobType(title) {
-  const titleLower = title.toLowerCase();
-
-  if (titleLower.includes('software') || titleLower.includes('swe') || titleLower.includes('engineer')) {
-    return 'Software Engineering';
-  }
-  if (titleLower.includes('data scien')) {
-    return 'Data Science';
-  }
-  if (titleLower.includes('machine learning') || titleLower.includes('ml ')) {
-    return 'Machine Learning';
-  }
-  if (titleLower.includes('product manage') || titleLower.includes('pm ')) {
-    return 'Product Management';
-  }
-  if (titleLower.includes('mobile') || titleLower.includes('ios') || titleLower.includes('android')) {
-    return 'Mobile Development';
-  }
-  if (titleLower.includes('security') || titleLower.includes('cybersecurity')) {
-    return 'Security Engineering';
-  }
-  if (titleLower.includes('devops') || titleLower.includes('sre')) {
-    return 'DevOps';
-  }
-  if (titleLower.includes('design') || titleLower.includes('ui') || titleLower.includes('ux')) {
-    return 'UI/UX Design';
-  }
-  if (titleLower.includes('data engineer')) {
-    return 'Data Engineering';
-  }
-  if (titleLower.includes('frontend') || titleLower.includes('front-end')) {
-    return 'Frontend Development';
-  }
-  if (titleLower.includes('backend') || titleLower.includes('back-end')) {
-    return 'Backend Development';
-  }
-  if (titleLower.includes('fullstack') || titleLower.includes('full-stack')) {
-    return 'Full Stack Development';
-  }
-
-  return 'Other';
 }
 
 /**
@@ -133,7 +89,7 @@ function transformJob(job, companyName) {
     company_name: companyName,
     position_title: job.name,
     description: job.postingDescription || 'No description available',
-    job_type: categorizeJobType(job.name),
+    job_type: categorizeJobType(job.name, job.postingDescription),
     location: location,
     eligible_years: determineEligibleYears(job),
     posted_date: job.releasedDate ? new Date(job.releasedDate).toISOString() : new Date().toISOString(),
