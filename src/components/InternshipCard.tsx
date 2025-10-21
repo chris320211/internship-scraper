@@ -1,4 +1,5 @@
 import { MapPin, Calendar, DollarSign, Clock, Bookmark, ExternalLink, CheckCircle, Building2 } from 'lucide-react';
+import { useState } from 'react';
 import { Internship } from '../lib/mockData';
 import { getCompanyLogo } from '../lib/companyLogos';
 
@@ -9,6 +10,8 @@ interface InternshipCardProps {
 }
 
 export default function InternshipCard({ internship, isSaved, onToggleSave }: InternshipCardProps) {
+  const [logoError, setLogoError] = useState(false);
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'No deadline';
     const date = new Date(dateString);
@@ -26,20 +29,36 @@ export default function InternshipCard({ internship, isSaved, onToggleSave }: In
   const companyName = internship.company_name || 'Unknown Company';
   const companyLogo = getCompanyLogo(companyName);
 
+  // Get company initials for fallback
+  const getCompanyInitials = (name: string) => {
+    return name
+      .split(/[\s&]+/)
+      .filter(word => word.length > 0)
+      .slice(0, 2)
+      .map(word => word[0].toUpperCase())
+      .join('');
+  };
+
+  const companyInitials = getCompanyInitials(companyName);
+
   return (
     <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all p-6 border border-slate-200 hover:border-blue-300">
       <div className="flex justify-between items-start mb-4">
         <div className="flex-1">
           <div className="flex items-start gap-3 mb-2">
             <div className="bg-white rounded-lg p-2 flex items-center justify-center shadow-md border border-slate-200 w-16 h-16 flex-shrink-0">
-              {companyLogo ? (
+              {companyLogo && !logoError ? (
                 <img
                   src={companyLogo}
                   alt={`${companyName} logo`}
                   className="w-full h-full object-contain"
+                  onError={() => setLogoError(true)}
+                  loading="lazy"
                 />
               ) : (
-                <Building2 className="w-8 h-8 text-slate-400" />
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-600 rounded text-white font-bold text-lg">
+                  {companyInitials}
+                </div>
               )}
             </div>
             <div>
