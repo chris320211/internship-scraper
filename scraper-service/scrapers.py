@@ -880,9 +880,33 @@ class GoogleJobsScraper(InternshipScraper):
         "full stack internship 2026",
     ]
 
+    # Focused company-specific searches to capture branded programs
+    MAJOR_COMPANIES = [
+        "Google", "Meta", "Amazon", "Apple", "Microsoft",
+        "NVIDIA", "Tesla", "Palantir", "Stripe", "Databricks",
+        "Snowflake", "Netflix", "Uber", "Lyft", "Airbnb",
+    ]
+
+    COMPANY_QUERY_TEMPLATES = [
+        "{company} internship 2026",
+        "{company} software engineering internship",
+        "{company} new grad internship",
+        "{company} intern program",
+    ]
+
+    DEFAULT_MAX_QUERIES_PER_RUN = 6
+    DEFAULT_DATE_POSTED_WINDOW = "week"
+
     def __init__(self):
         super().__init__()
         self.api_key = os.environ.get("SERPAPI_API_KEY") or os.environ.get("SERPAPI_KEY")
+        try:
+            self.max_queries_per_run = max(
+                1, int(os.environ.get("SERPAPI_MAX_QUERIES", str(self.DEFAULT_MAX_QUERIES_PER_RUN)))
+            )
+        except ValueError:
+            self.max_queries_per_run = self.DEFAULT_MAX_QUERIES_PER_RUN
+        self.date_posted_window = os.environ.get("SERPAPI_DATE_POSTED", self.DEFAULT_DATE_POSTED_WINDOW) or self.DEFAULT_DATE_POSTED_WINDOW
 
     def _extract_company_from_extensions(self, extensions: list) -> str:
         """Extract company name from job extensions"""
@@ -914,6 +938,61 @@ class GoogleJobsScraper(InternshipScraper):
 
         return ""
 
+    def _normalize_posted_date(self, job: dict) -> str:
+        """Convert detected posting information into ISO timestamp."""
+        detected = job.get("detected_extensions") or {}
+        posted_text = (
+            detected.get("posted_at") or
+            detected.get("posted_at_date") or
+            detected.get("posted_at_utc") or
+            job.get("posted_at")
+        )
+
+        if posted_text:
+            parsed = _parse_date_string(str(posted_text))
+            if parsed:
+                return f"{parsed}T00:00:00Z"
+
+        return datetime.utcnow().isoformat()
+
+    def _build_query_rotation(self, override_query: Optional[str]) -> list[str]:
+        """
+        Build a deduplicated list of queries, rotating daily to spread SerpApi usage.
+
+        Args:
+            override_query: direct query from caller (skips rotation when provided)
+        """
+        if override_query:
+            return [override_query.strip()]
+
+        queries: list[str] = []
+        queries.extend(self.SEARCH_QUERIES)
+
+        for company in self.MAJOR_COMPANIES:
+            for template in self.COMPANY_QUERY_TEMPLATES:
+                queries.append(template.format(company=company))
+
+        # Deduplicate while preserving order
+        seen = set()
+        deduped = []
+        for q in queries:
+            trimmed = q.strip()
+            if trimmed and trimmed.lower() not in seen:
+                seen.add(trimmed.lower())
+                deduped.append(trimmed)
+
+        if not deduped:
+            return []
+
+        max_queries = self.max_queries_per_run
+        if len(deduped) <= max_queries:
+            return deduped
+
+        # Rotate based on day-of-year so each run covers a different window
+        day_index = datetime.utcnow().timetuple().tm_yday % len(deduped)
+        rotated = deduped[day_index:] + deduped[:day_index]
+        return rotated[:max_queries]
+
     def scrape(self, query: str = None, num_results: int = 10) -> list[dict]:
         """
         Scrape Google Jobs for internships
@@ -929,10 +1008,13 @@ class GoogleJobsScraper(InternshipScraper):
             print("SerpApi key not configured, skipping Google Jobs scraper")
             return []
 
-        # If custom query provided, use it; otherwise use one predefined query
-        queries_to_run = [query] if query else [self.SEARCH_QUERIES[0]]
+        queries_to_run = self._build_query_rotation(query)
+        if not queries_to_run:
+            print("No SerpApi queries to execute")
+            return []
 
         all_jobs = []
+        seen_urls = set()
 
         for search_query in queries_to_run:
             try:
@@ -945,6 +1027,8 @@ class GoogleJobsScraper(InternshipScraper):
                     "hl": "en",
                     "gl": "us",
                     "num": num_results,
+                    "date_posted": self.date_posted_window,
+                    "job_employment_type": "internship",
                 }
 
                 search = GoogleSearch(params)
@@ -978,6 +1062,9 @@ class GoogleJobsScraper(InternshipScraper):
                         application_url = self._build_job_url(job)
                         if not application_url:
                             continue
+                        if application_url in seen_urls:
+                            continue
+                        seen_urls.add(application_url)
 
                         # Extract location
                         location = job.get("location", "Various")
@@ -1006,7 +1093,7 @@ class GoogleJobsScraper(InternshipScraper):
                             "job_type": self.categorize_job_type(title, description),
                             "location": location,
                             "eligible_years": eligible_years,
-                            "posted_date": datetime.utcnow().isoformat(),
+                            "posted_date": self._normalize_posted_date(job),
                             "application_deadline": deadline,
                             "application_url": application_url,
                             "is_active": True,
