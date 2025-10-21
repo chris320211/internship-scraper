@@ -109,6 +109,8 @@ JOB_TYPE_PATTERNS = [
             re.compile(r'software developer', re.IGNORECASE),
             re.compile(r'software engineering', re.IGNORECASE),
             re.compile(r'\bswe\b', re.IGNORECASE),
+            re.compile(r'engineer(?:ing)?\s+(?:intern|co-?op)', re.IGNORECASE),
+            re.compile(r'developer\s+(?:intern|co-?op)', re.IGNORECASE),
         ],
     ),
     (
@@ -201,6 +203,100 @@ JOB_TYPE_PATTERNS = [
             re.compile(r'interaction design', re.IGNORECASE),
         ],
     ),
+    (
+        'Investment Banking',
+        [
+            re.compile(r'investment banking', re.IGNORECASE),
+            re.compile(r'\bib\b', re.IGNORECASE),
+            re.compile(r'mergers and acquisitions', re.IGNORECASE),
+            re.compile(r'\bm&a\b', re.IGNORECASE),
+            re.compile(r'corporate finance', re.IGNORECASE),
+            re.compile(r'capital markets', re.IGNORECASE),
+            re.compile(r'equity research', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Private Equity',
+        [
+            re.compile(r'private equity', re.IGNORECASE),
+            re.compile(r'\bpe\b(?!\s*engineer)', re.IGNORECASE),
+            re.compile(r'growth equity', re.IGNORECASE),
+            re.compile(r'venture capital', re.IGNORECASE),
+            re.compile(r'\bvc\b', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Consulting',
+        [
+            re.compile(r'management consulting', re.IGNORECASE),
+            re.compile(r'strategy consulting', re.IGNORECASE),
+            re.compile(r'business consulting', re.IGNORECASE),
+            re.compile(r'consultant', re.IGNORECASE),
+            re.compile(r'advisory', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Accounting',
+        [
+            re.compile(r'accounting', re.IGNORECASE),
+            re.compile(r'audit', re.IGNORECASE),
+            re.compile(r'tax', re.IGNORECASE),
+            re.compile(r'financial reporting', re.IGNORECASE),
+            re.compile(r'cpa', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Marketing',
+        [
+            re.compile(r'marketing', re.IGNORECASE),
+            re.compile(r'brand management', re.IGNORECASE),
+            re.compile(r'digital marketing', re.IGNORECASE),
+            re.compile(r'growth marketing', re.IGNORECASE),
+            re.compile(r'content marketing', re.IGNORECASE),
+            re.compile(r'marketing analytics', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Sales',
+        [
+            re.compile(r'sales development', re.IGNORECASE),
+            re.compile(r'\bsdr\b', re.IGNORECASE),
+            re.compile(r'business development', re.IGNORECASE),
+            re.compile(r'\bbdr\b', re.IGNORECASE),
+            re.compile(r'account management', re.IGNORECASE),
+            re.compile(r'sales operations', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Finance',
+        [
+            re.compile(r'financial analyst', re.IGNORECASE),
+            re.compile(r'finance analyst', re.IGNORECASE),
+            re.compile(r'treasury', re.IGNORECASE),
+            re.compile(r'fp&a', re.IGNORECASE),
+            re.compile(r'financial planning', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Operations',
+        [
+            re.compile(r'operations', re.IGNORECASE),
+            re.compile(r'supply chain', re.IGNORECASE),
+            re.compile(r'logistics', re.IGNORECASE),
+            re.compile(r'process improvement', re.IGNORECASE),
+            re.compile(r'business operations', re.IGNORECASE),
+        ],
+    ),
+    (
+        'Human Resources',
+        [
+            re.compile(r'human resources', re.IGNORECASE),
+            re.compile(r'\bhr\b', re.IGNORECASE),
+            re.compile(r'people operations', re.IGNORECASE),
+            re.compile(r'recruiting', re.IGNORECASE),
+            re.compile(r'talent acquisition', re.IGNORECASE),
+        ],
+    ),
 ]
 
 def _parse_date_string(raw_value: str) -> Optional[str]:
@@ -275,7 +371,12 @@ class InternshipScraper:
     def is_internship(self, title: str, description: str = "") -> bool:
         """Check if a job posting is an internship"""
         text = f"{title} {description}".lower()
-        keywords = ['intern', 'internship', 'co-op', 'coop', 'summer program', 'summer 2025', 'summer 2026']
+        keywords = [
+            'intern', 'internship', 'co-op', 'coop',
+            'summer program', 'summer 2025', 'summer 2026',
+            'undergraduate program', 'student program',
+            'early career program', 'rotational program'
+        ]
         return any(keyword in text for keyword in keywords)
 
     def categorize_job_type(self, title: str, description: str = "") -> str:
@@ -287,6 +388,35 @@ class InternshipScraper:
                 return label
 
         return 'Other'
+
+    def detect_eligible_years(self, title: str, description: str = "") -> List[str]:
+        """Detect eligible class years from title and description"""
+        text = f"{title} {description}".lower()
+        eligible = []
+
+        # Experience level keywords
+        if any(keyword in text for keyword in ['freshman', 'first year', 'first-year']):
+            eligible.append('Freshman')
+        if any(keyword in text for keyword in ['sophomore', 'second year', 'second-year']):
+            eligible.append('Sophomore')
+        if any(keyword in text for keyword in ['junior', 'third year', 'third-year', 'penultimate']):
+            eligible.append('Junior')
+        if any(keyword in text for keyword in ['senior', 'fourth year', 'fourth-year', 'final year']):
+            eligible.append('Senior')
+        if any(keyword in text for keyword in ['graduate', 'masters', 'master\'s', 'phd', 'ph.d', 'doctoral']):
+            eligible.append('Graduate')
+
+        # If no specific year mentioned, assume underclassmen and upperclassmen
+        if not eligible:
+            if any(keyword in text for keyword in ['underclassmen', 'all years', 'all class years']):
+                eligible = ['Freshman', 'Sophomore', 'Junior', 'Senior']
+            elif any(keyword in text for keyword in ['upperclassmen', 'rising junior', 'rising senior']):
+                eligible = ['Junior', 'Senior']
+            else:
+                # Default to typical internship years
+                eligible = ['Sophomore', 'Junior', 'Senior']
+
+        return eligible
 
     def scrape(self) -> List[Dict]:
         """Override this method in subclasses"""
@@ -617,9 +747,9 @@ class SerpApiLinkedInScraper(InternshipScraper):
                 "company_name": company,
                 "position_title": title,
                 "description": description if description else f"Internship opportunity at {company}",
-                "job_type": self.categorize_job_type(title),
+                "job_type": self.categorize_job_type(title, description),
                 "location": job.get("location") or job.get("city") or "Various",
-                "eligible_years": ["Sophomore", "Junior", "Senior", "Graduate"],
+                "eligible_years": self.detect_eligible_years(title, description),
                 "posted_date": self._normalize_posted_date(job),
                 "application_deadline": deadline,
                 "application_url": application_url,
