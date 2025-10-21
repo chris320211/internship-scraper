@@ -363,6 +363,78 @@ def extract_application_deadline(*candidates: Optional[str]) -> Optional[str]:
     return None
 
 
+def clean_job_title(title: str) -> str:
+    """
+    Clean job title by removing metadata and redundant information.
+
+    Examples:
+        "FY26 Intern – Voice and Music Tools Internship - Software Engineer - Embedded Systems and Python - 3 - 6 months - Cambridge - Interim Intern - 50623 CNE Audio Tools & Apps SW UK_CAM"
+        -> "FY26 Intern – Voice and Music Tools Internship"
+
+        "Software Engineer Intern - Fall 2025 - 6 months - Remote"
+        -> "Software Engineer Intern - Fall 2025"
+    """
+    if not title:
+        return title
+
+    original_title = title
+
+    # For overly long titles, use a simpler approach: keep first 1-2 meaningful segments
+    if len(title) > 100 or title.count(' - ') > 4:
+        parts = [p.strip() for p in title.split(' - ') if p.strip()]
+        # Find the first meaningful segment (usually has "Intern" or "Internship")
+        kept_parts = []
+        for i, part in enumerate(parts):
+            kept_parts.append(part)
+            # Stop after finding the first segment with "intern" or after 2 segments
+            if 'intern' in part.lower() or len(kept_parts) >= 2:
+                break
+        if kept_parts:
+            title = ' - '.join(kept_parts)
+            # Clean up any trailing metadata
+            title = re.sub(r'\s*-\s*\d+\s*-\s*\d+\s*months?\s*.*$', '', title, flags=re.IGNORECASE)
+            title = re.sub(r'\s*-\s*\d+\s*months?\s*.*$', '', title, flags=re.IGNORECASE)
+            return title.strip(' -')
+
+    # Common patterns to remove (metadata that appears after the main title)
+    removal_patterns = [
+        # Duration patterns (greedy - remove everything after)
+        r'\s*-\s*\d+\s*-\s*\d+\s*months?\s*.*$',  # "- 3 - 6 months ..."
+        r'\s*-\s*\d+\s*months?\s*.*$',  # "- 6 months ..."
+
+        # Job codes and IDs
+        r'\s*-\s*\d{5,}.*$',  # "- 50623 ..."
+
+        # Generic metadata at the end
+        r'\s*-\s*Interim\s+(?:Engineering\s+)?Intern\s*.*$',  # "- Interim Intern ..."
+        r'\s*-\s*Systems?\s*$',  # "- Systems"
+        r'\s*-\s*SW\s*$',  # "- SW"
+        r'\s*-\s*Months?\s*$',  # "- Months"
+    ]
+
+    cleaned = title
+    for pattern in removal_patterns:
+        cleaned = re.sub(pattern, '', cleaned, flags=re.IGNORECASE)
+        if cleaned != title:  # If we matched, stop processing
+            break
+
+    # Clean up multiple consecutive hyphens and spaces
+    cleaned = re.sub(r'\s*-\s*-\s*', ' - ', cleaned)
+    cleaned = re.sub(r'\s+', ' ', cleaned)
+    cleaned = cleaned.strip(' -')
+
+    # If we removed too much and title is too short, return original
+    if len(cleaned) < 15 and len(original_title) > 30:
+        # Try a simpler approach: keep only up to the first 2 segments
+        parts = [p.strip() for p in original_title.split(' - ') if p.strip()]
+        if len(parts) > 2:
+            cleaned = ' - '.join(parts[:2])
+        else:
+            return original_title
+
+    return cleaned if cleaned and len(cleaned) > 5 else original_title
+
+
 class InternshipScraper:
     """Base class for internship scrapers"""
 
@@ -454,6 +526,9 @@ class LinkedInScraper(InternshipScraper):
                     location = location_elem.text.strip() if location_elem else 'Remote'
                     url = link_elem.attrs.get('href', '') if link_elem else ''
 
+                    # Clean the title
+                    title = clean_job_title(title)
+
                     timeline_text = ''
                     posted_elem = card.css_first('time')
                     if posted_elem:
@@ -516,6 +591,9 @@ class IndeedScraper(InternshipScraper):
                     company = company_elem.text.strip() if company_elem else 'Unknown'
                     location = location_elem.text.strip() if location_elem else 'Remote'
 
+                    # Clean the title
+                    title = clean_job_title(title)
+
                     job_key = link_elem.attrs.get('data-jk', '') if link_elem else ''
                     url = f"https://www.indeed.com/viewjob?jk={job_key}" if job_key else ''
 
@@ -571,6 +649,9 @@ class LevelsFyiScraper(InternshipScraper):
                     company = cells[0].text.strip()
                     title = cells[1].text.strip()
                     location = cells[2].text.strip() if len(cells) > 2 else 'Various'
+
+                    # Clean the title
+                    title = clean_job_title(title)
 
                     link_elem = cells[1].css_first('a')
                     url = link_elem.attrs.get('href', '') if link_elem else ''
@@ -671,6 +752,9 @@ class GitHubInternshipScraper(InternshipScraper):
                         company = company_elem.text.strip()
                         role = role_elem.text.strip() if role_elem else 'Software Engineering Intern'
                         location = location_elem.text.strip() if location_elem else 'Various'
+
+                        # Clean the role title to remove metadata
+                        role = clean_job_title(role)
 
                         if table_idx == 0 and row_idx < 2:
                             print(f"        Company: '{company}', Role: '{role}'")
@@ -878,6 +962,9 @@ class GoogleJobsScraper(InternshipScraper):
                         title = job.get("title", "").strip()
                         description = job.get("description", "").strip()
 
+                        # Clean the title
+                        title = clean_job_title(title)
+
                         # Only process if it's an internship
                         if not self.is_internship(title, description):
                             continue
@@ -993,6 +1080,9 @@ class SerpApiLinkedInScraper(InternshipScraper):
             title = job.get("title", "Internship").strip()
             company = job.get("company_name") or job.get("company") or "Unknown Company"
             description = job.get("description") or job.get("snippet") or ""
+
+            # Clean the title
+            title = clean_job_title(title)
 
             if not self.is_internship(title, description):
                 continue
