@@ -368,6 +368,18 @@ export async function getInternships(filters = {}) {
   }
 
   const result = await pool.query(query, values);
+
+  // Debug: Log SerpAPI filtering
+  const serpApiRows = result.rows.filter(r => r.source === 'Google Jobs (SerpApi)');
+  if (serpApiRows.length > 0) {
+    console.log(`[DEBUG] Found ${serpApiRows.length} SerpAPI rows before filter`);
+    serpApiRows.slice(0, 2).forEach(row => {
+      const isSearch = isSearchUrl(row.application_url);
+      console.log(`[DEBUG] SerpAPI URL: ${row.application_url.substring(0, 80)}...`);
+      console.log(`[DEBUG] isSearchUrl result: ${isSearch}`);
+    });
+  }
+
   return result.rows
     .filter((row) => !isSearchUrl(row.application_url))
     .map((row) => ({
