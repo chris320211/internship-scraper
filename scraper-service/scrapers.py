@@ -605,69 +605,176 @@ class LevelsFyiScraper(InternshipScraper):
             return []
 
 
-class SimplifyScraper(InternshipScraper):
-    """Scrape Simplify internship listings (GitHub repo)"""
+class GitHubInternshipScraper(InternshipScraper):
+    """Scrape GitHub-based internship repositories using Scrapling"""
 
-    def scrape(self) -> List[Dict]:
-        """Scrape Simplify's curated internship list"""
+    GITHUB_REPOS = [
+        {
+            'name': 'SimplifyJobs Summer 2026',
+            'url': 'https://github.com/SimplifyJobs/Summer2026-Internships',
+            'source': 'github_simplify_summer2026'
+        },
+        {
+            'name': 'Ouckah Summer 2026',
+            'url': 'https://github.com/Ouckah/Summer2026-Internships',
+            'source': 'github_ouckah_summer2026'
+        },
+        {
+            'name': 'Pitt CSC Summer 2026',
+            'url': 'https://github.com/pittcsc/Summer2026-Internships',
+            'source': 'github_pittcsc_summer2026'
+        },
+        {
+            'name': 'SimplifyJobs New Grad',
+            'url': 'https://github.com/SimplifyJobs/New-Grad-Positions',
+            'source': 'github_simplify_newgrad'
+        },
+        {
+            'name': 'ReaVNaiL New Grad',
+            'url': 'https://github.com/ReaVNaiL/New-Grad-2025',
+            'source': 'github_reavnail_newgrad'
+        }
+    ]
+
+    def scrape_repo(self, repo_config: Dict) -> List[Dict]:
+        """Scrape a single GitHub repository"""
         try:
-            # Simplify maintains a popular GitHub repo with internship listings
-            url = "https://github.com/SimplifyJobs/Summer2025-Internships"
-
-            page = Fetcher.get(url, timeout=30)
+            print(f"  Scraping {repo_config['name']}...")
+            page = Fetcher.get(repo_config['url'], timeout=30)
 
             jobs = []
-            # Look for table rows in the README
-            rows = page.css('table tbody tr')[:50]
+            # Look for all tables in the README
+            tables = page.css('table')
+            print(f"    Found {len(tables)} tables")
 
-            for row in rows:
-                try:
-                    cells = row.css('td')
-                    if len(cells) < 2:
+            for table_idx, table in enumerate(tables):
+                rows = table.css('tbody tr')[:100]  # Limit to first 100 rows per table
+                if table_idx == 0:
+                    print(f"    Table {table_idx}: {len(rows)} rows")
+
+                for row_idx, row in enumerate(rows):
+                    try:
+                        cells = row.css('td')
+                        if len(cells) < 2:
+                            continue
+
+                        if table_idx == 0 and row_idx < 2:
+                            print(f"      Row {row_idx}: {len(cells)} cells")
+
+                        # Different repos have different column orders
+                        # Common patterns: [Company, Role, Location, ...] or [Name, Location, Notes]
+                        company_elem = cells[0]
+                        role_elem = cells[1] if len(cells) > 1 else None
+                        location_elem = cells[2] if len(cells) > 2 else None
+
+                        company = company_elem.text.strip()
+                        role = role_elem.text.strip() if role_elem else 'Software Engineering Intern'
+                        location = location_elem.text.strip() if location_elem else 'Various'
+
+                        if table_idx == 0 and row_idx < 2:
+                            print(f"        Company: '{company}', Role: '{role}'")
+
+                        # Skip header rows or invalid entries
+                        if not company or company.lower() in ['company', 'name', '']:
+                            continue
+
+                        # Try to find apply link from company or role column
+                        link_elem = role_elem.css_first('a') if role_elem else company_elem.css_first('a')
+                        if not link_elem:
+                            # Try finding link in other cells
+                            for cell in cells:
+                                link_elem = cell.css_first('a')
+                                if link_elem:
+                                    break
+
+                        # Get href attribute safely
+                        url = ''
+                        if link_elem:
+                            try:
+                                url = link_elem.attrs.get('href', '')
+                            except (AttributeError, TypeError):
+                                try:
+                                    # Try alternative attribute access
+                                    url = str(link_elem.get('href', ''))
+                                except:
+                                    url = ''
+
+                        if table_idx == 0 and row_idx < 2:
+                            print(f"        URL: '{url}'")
+
+                        # Skip closed positions
+                        row_text = row.text.lower()
+                        if '🔒' in row.text or 'closed' in row_text or '❌' in row.text:
+                            if table_idx == 0 and row_idx < 2:
+                                print(f"        Skipped: closed position")
+                            continue
+
+                        # Check for deadline information
+                        deadline_candidates = []
+                        if len(cells) > 3:
+                            deadline_candidates.append(cells[3].text.strip())
+                        if len(cells) > 4:
+                            deadline_candidates.append(cells[4].text.strip())
+                        deadline = extract_application_deadline(*deadline_candidates, role, company)
+
+                        # Extract eligible years from description
+                        eligible_years = self.detect_eligible_years(role, ' '.join([c.text for c in cells]))
+
+                        if table_idx == 0 and row_idx < 2:
+                            print(f"        Valid: company={bool(company)}, url={bool(url)}")
+
+                        if company and url:
+                            jobs.append({
+                                'id': f"{repo_config['source']}-{hash(f'{company}-{role}-{url}')}",
+                                'company_name': company,
+                                'position_title': role,
+                                'description': f'{role} at {company}',
+                                'job_type': self.categorize_job_type(role),
+                                'location': location,
+                                'eligible_years': eligible_years,
+                                'posted_date': datetime.now().isoformat(),
+                                'application_deadline': deadline,
+                                'application_url': url,
+                                'is_active': True,
+                                'source': repo_config['source']
+                            })
+                    except Exception as e:
+                        print(f"    Error parsing row: {e}")
                         continue
 
-                    company_elem = cells[0]
-                    role_elem = cells[1] if len(cells) > 1 else None
-                    location_elem = cells[2] if len(cells) > 2 else None
-
-                    company = company_elem.text.strip()
-                    role = role_elem.text.strip() if role_elem else 'Software Engineering Intern'
-                    location = location_elem.text.strip() if location_elem else 'Various'
-
-                    # Try to find apply link
-                    link_elem = role_elem.css_first('a') if role_elem else company_elem.css_first('a')
-                    url = link_elem.attrs.get('href', '') if link_elem else ''
-
-                    deadline_candidates = []
-                    if len(cells) > 3:
-                        deadline_candidates.append(cells[3].text.strip())
-                    if len(cells) > 4:
-                        deadline_candidates.append(cells[4].text.strip())
-                    deadline = extract_application_deadline(*deadline_candidates, role, company)
-
-                    if company and role:
-                        jobs.append({
-                            'id': f'simplify-{hash(f"{company}-{role}")}',
-                            'company_name': company,
-                            'position_title': role,
-                            'description': f'Summer 2025 internship at {company}',
-                            'job_type': self.categorize_job_type(role),
-                            'location': location,
-                            'eligible_years': ['Sophomore', 'Junior', 'Senior', 'Graduate'],
-                            'posted_date': datetime.now().isoformat(),
-                            'application_deadline': deadline,
-                            'application_url': url,
-                            'is_active': True,
-                            'source': 'Simplify'
-                        })
-                except Exception as e:
-                    print(f"Error parsing Simplify row: {e}")
-                    continue
-
+            print(f"    Found {len(jobs)} internships from {repo_config['name']}")
             return jobs
         except Exception as e:
-            print(f"Error scraping Simplify: {e}")
+            print(f"    Error scraping {repo_config['name']}: {e}")
             return []
+
+    def scrape(self) -> List[Dict]:
+        """Scrape all GitHub repositories"""
+        all_jobs = []
+
+        for repo_config in self.GITHUB_REPOS:
+            jobs = self.scrape_repo(repo_config)
+            all_jobs.extend(jobs)
+
+        # Deduplicate by URL
+        seen_urls = set()
+        unique_jobs = []
+        for job in all_jobs:
+            if job['application_url'] not in seen_urls:
+                seen_urls.add(job['application_url'])
+                unique_jobs.append(job)
+
+        print(f"Total unique GitHub internships: {len(unique_jobs)} (from {len(all_jobs)} total)")
+        return unique_jobs
+
+
+class SimplifyScraper(InternshipScraper):
+    """Legacy scraper - now handled by GitHubInternshipScraper"""
+
+    def scrape(self) -> List[Dict]:
+        """Deprecated - use GitHubInternshipScraper instead"""
+        scraper = GitHubInternshipScraper()
+        return scraper.scrape()
 
 
 class SerpApiLinkedInScraper(InternshipScraper):
@@ -767,7 +874,7 @@ def scrape_all_sources(keywords: str = "software engineering intern") -> List[Di
     scrapers = [
         # IndeedScraper(),
         LevelsFyiScraper(),
-        SimplifyScraper(),
+        GitHubInternshipScraper(),  # New multi-repo GitHub scraper
         SerpApiLinkedInScraper(),
         # LinkedInScraper(),  # LinkedIn might require auth
     ]

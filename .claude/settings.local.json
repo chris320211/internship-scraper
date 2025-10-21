@@ -24,7 +24,8 @@
       "Bash(docker ps:*)",
       "Bash(awk:*)",
       "Bash(open:*)",
-      "Bash(docker network ls)"
+      "Bash(docker network ls)",
+      "Bash(docker logs:*)"
     ],
     "deny": [],
     "ask": []

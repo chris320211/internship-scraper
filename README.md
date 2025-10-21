@@ -192,7 +192,7 @@ curl "http://localhost:3001/api/internships?jobTypes=Software Engineering&years=
 # Get only remote internships
 curl "http://localhost:3001/api/internships?remoteOnly=true"
 
-# Force refresh from all sources
+# Force refresh from all sources / initate new scrape
 curl -X POST http://localhost:3001/api/internships/refresh
 
 # Directly scrape from web sources
