@@ -64,21 +64,27 @@ def sources():
                 'url': 'https://www.levels.fyi/internships/'
             },
             {
-                'name': 'Simplify',
-                'description': 'GitHub repo with crowd-sourced Summer 2025 internships',
-                'url': 'https://github.com/SimplifyJobs/Summer2025-Internships'
+                'name': 'GitHub Repos',
+                'description': 'Multiple GitHub repos with crowd-sourced internships (SimplifyJobs, Ouckah, Pitt CSC)',
+                'url': 'https://github.com/SimplifyJobs/Summer2026-Internships'
             },
             {
-                'name': 'Indeed',
-                'description': 'Major job board with internship filter',
-                'url': 'https://www.indeed.com',
-                'status': 'disabled'  # May require anti-bot bypass
+                'name': 'Google Jobs (SerpApi)',
+                'description': 'Google Jobs search results via SerpApi - conservative quota management (250/month)',
+                'url': 'https://www.google.com/search?q=internships',
+                'status': 'requires SERPAPI_API_KEY'
             },
             {
                 'name': 'LinkedIn (SerpApi)',
                 'description': 'Professional network job listings fetched via SerpApi',
                 'url': 'https://www.linkedin.com/jobs',
                 'status': 'requires SERPAPI_API_KEY'
+            },
+            {
+                'name': 'Indeed',
+                'description': 'Major job board with internship filter',
+                'url': 'https://www.indeed.com',
+                'status': 'disabled'  # May require anti-bot bypass
             }
         ]
     })

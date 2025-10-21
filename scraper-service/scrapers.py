@@ -10,6 +10,7 @@ from urllib.parse import urljoin, urlparse
 from html import unescape
 from dateutil import parser as date_parser
 import requests
+from serpapi import GoogleSearch
 
 DATE_KEYWORDS = re.compile(
     r'(deadline|apply by|apply before|applications? (?:due|close|deadline)|'
@@ -777,6 +778,166 @@ class SimplifyScraper(InternshipScraper):
         return scraper.scrape()
 
 
+class GoogleJobsScraper(InternshipScraper):
+    """Scrape Google Jobs search results via SerpApi with conservative quota management"""
+
+    API_ENDPOINT = "https://serpapi.com/search.json"
+
+    # Conservative search queries to stay within 250/month limit (~8 searches/day)
+    # Spread across different internship types for better coverage
+    SEARCH_QUERIES = [
+        "software engineering internship 2026",
+        "machine learning internship 2026",
+        "data science internship 2026",
+        "product management internship 2026",
+        "quantitative internship 2026",
+        "frontend engineering internship 2026",
+        "backend engineering internship 2026",
+        "full stack internship 2026",
+    ]
+
+    def __init__(self):
+        super().__init__()
+        self.api_key = os.environ.get("SERPAPI_API_KEY") or os.environ.get("SERPAPI_KEY")
+
+    def _extract_company_from_extensions(self, extensions: list) -> str:
+        """Extract company name from job extensions"""
+        if not extensions:
+            return "Unknown Company"
+
+        # Company is usually the first extension
+        for ext in extensions:
+            if ext and not any(keyword in ext.lower() for keyword in ['hour', 'day', 'week', 'month', 'ago', 'full-time', 'part-time', 'internship']):
+                return ext.strip()
+
+        return "Unknown Company"
+
+    def _build_job_url(self, job: dict) -> str:
+        """Build application URL from job data"""
+        # Try share_url first (most reliable)
+        if share_url := job.get("share_url"):
+            return share_url
+
+        # Try related_links for apply link
+        if related_links := job.get("related_links"):
+            for link in related_links:
+                if isinstance(link, dict) and link.get("link"):
+                    return link["link"]
+
+        # Fallback to job_id based URL
+        if job_id := job.get("job_id"):
+            return f"https://www.google.com/search?ibp=htl;jobs&q={job_id}"
+
+        return ""
+
+    def scrape(self, query: str = None, num_results: int = 10) -> list[dict]:
+        """
+        Scrape Google Jobs for internships
+
+        Args:
+            query: Custom search query (optional, uses predefined if None)
+            num_results: Number of results to fetch per query (default: 10)
+
+        Returns:
+            List of internship dictionaries
+        """
+        if not self.api_key:
+            print("SerpApi key not configured, skipping Google Jobs scraper")
+            return []
+
+        # If custom query provided, use it; otherwise use one predefined query
+        queries_to_run = [query] if query else [self.SEARCH_QUERIES[0]]
+
+        all_jobs = []
+
+        for search_query in queries_to_run:
+            try:
+                print(f"  Searching Google Jobs: '{search_query}'")
+
+                params = {
+                    "api_key": self.api_key,
+                    "engine": "google_jobs",
+                    "q": search_query,
+                    "hl": "en",
+                    "gl": "us",
+                    "num": num_results,
+                }
+
+                search = GoogleSearch(params)
+                results = search.get_dict()
+
+                if "error" in results:
+                    print(f"    SerpApi error: {results['error']}")
+                    continue
+
+                jobs_results = results.get("jobs_results", [])
+                print(f"    Found {len(jobs_results)} jobs from Google")
+
+                for job in jobs_results:
+                    try:
+                        title = job.get("title", "").strip()
+                        description = job.get("description", "").strip()
+
+                        # Only process if it's an internship
+                        if not self.is_internship(title, description):
+                            continue
+
+                        # Extract company name
+                        company = job.get("company_name") or self._extract_company_from_extensions(
+                            job.get("extensions", [])
+                        )
+
+                        # Build application URL
+                        application_url = self._build_job_url(job)
+                        if not application_url:
+                            continue
+
+                        # Extract location
+                        location = job.get("location", "Various")
+
+                        # Extract deadline from extensions or description
+                        extensions = job.get("extensions", [])
+                        detected_extensions = job.get("detected_extensions", {})
+                        deadline = extract_application_deadline(
+                            description,
+                            *extensions,
+                            str(detected_extensions.get("posted_at")),
+                            str(detected_extensions.get("schedule_type")),
+                        )
+
+                        # Detect eligible years
+                        eligible_years = self.detect_eligible_years(title, description)
+
+                        # Create unique ID
+                        job_id = job.get("job_id") or hash(f"{company}-{title}-{application_url}")
+
+                        all_jobs.append({
+                            "id": f"google-jobs-{job_id}",
+                            "company_name": company,
+                            "position_title": title,
+                            "description": description[:500] if description else f"Internship at {company}",
+                            "job_type": self.categorize_job_type(title, description),
+                            "location": location,
+                            "eligible_years": eligible_years,
+                            "posted_date": datetime.utcnow().isoformat(),
+                            "application_deadline": deadline,
+                            "application_url": application_url,
+                            "is_active": True,
+                            "source": "Google Jobs (SerpApi)",
+                        })
+
+                    except Exception as e:
+                        print(f"    Error parsing Google job: {e}")
+                        continue
+
+            except Exception as e:
+                print(f"    Error searching Google Jobs for '{search_query}': {e}")
+                continue
+
+        print(f"  Total internships from Google Jobs: {len(all_jobs)}")
+        return all_jobs
+
+
 class SerpApiLinkedInScraper(InternshipScraper):
     """Fetch LinkedIn internships via SerpApi"""
 
@@ -867,7 +1028,7 @@ class SerpApiLinkedInScraper(InternshipScraper):
         return jobs
 
 
-def scrape_all_sources(keywords: str = "software engineering intern") -> List[Dict]:
+def scrape_all_sources(keywords: str = "software engineering intern", use_google_jobs: bool = True) -> List[Dict]:
     """Scrape all sources and combine results"""
     all_jobs = []
 
@@ -878,6 +1039,10 @@ def scrape_all_sources(keywords: str = "software engineering intern") -> List[Di
         SerpApiLinkedInScraper(),
         # LinkedInScraper(),  # LinkedIn might require auth
     ]
+
+    # Add Google Jobs scraper if enabled (conservative quota management)
+    if use_google_jobs:
+        scrapers.append(GoogleJobsScraper())
 
     for scraper in scrapers:
         try:

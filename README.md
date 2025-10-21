@@ -8,7 +8,8 @@ A comprehensive internship search application that aggregates real internship po
   - **🔥 GitHub Repositories** (4,500+ curated internships from SimplifyJobs, Pitt CSC)
   - **Greenhouse** (20+ tech companies)
   - **Lever** (Selected companies with public APIs)
-  - **Web scraping** (Levels.fyi, Simplify, LinkedIn via SerpApi)
+  - **Google Jobs** (via SerpApi with conservative quota management)
+  - **Web scraping** (Levels.fyi, LinkedIn via SerpApi)
 - **Community-Curated Data**: Leverages open-source GitHub repos with verified, up-to-date postings
 - **AI-Powered Web Scraping**: Uses [Scrapling](https://github.com/D4Vinci/Scrapling) for intelligent web scraping
 - **Live Internship Data**: Automatically fetches 4,500+ real internship postings daily
@@ -75,11 +76,13 @@ A comprehensive internship search application that aggregates real internship po
 - The backend automatically executes `database/schema.sql` on startup, so the required tables and triggers will be created or updated the first time the API connects.
 - When using Docker, the schema is applied by the `db` service; for native development, start PostgreSQL manually (e.g., `docker compose up db` or a local service) before running the backend.
 
-### Optional: LinkedIn via SerpApi
+### Optional: Google Jobs & LinkedIn via SerpApi
 
 - Set `SERPAPI_API_KEY` in `.env` (and export it in your shell/Docker environment).
-- The scraper service will automatically pull LinkedIn job listings through SerpApi when the key is provided; without it, the integration is skipped.
+- The scraper service will automatically pull job listings from both **Google Jobs** and **LinkedIn** through SerpApi when the key is provided.
+- **Conservative Quota Management**: With a 250 searches/month limit, the Google Jobs scraper uses only **1 search per run** by default, rotating through 8 predefined job categories to maximize coverage.
 - SerpApi usage is billed separately—monitor your quota if you enable this feature.
+- Without the API key, both integrations are gracefully skipped.
 ### Option A: Docker Setup (Recommended)
 
 This will run the frontend, backend API, and scraper service in Docker containers.
@@ -306,14 +309,15 @@ Selected companies with public APIs:
 
 **Note**: Many companies have moved away from public Lever APIs. The infrastructure is in place to add more companies as they're discovered.
 
-### Web Scraping Sources (via Scrapling)
+### Web Scraping Sources
 
 The Python scraper service scrapes the following sources:
 
-- **Levels.fyi** - Curated internship listings with salary data
-- **Simplify** - GitHub repo with crowd-sourced Summer 2025 internships
-- **Indeed** (optional) - Major job board with internship filter
-- **LinkedIn** (optional) - Professional network job listings
+- **GitHub Repositories** (via Scrapling) - Multiple repos with crowd-sourced internships (SimplifyJobs, Ouckah, Pitt CSC)
+- **Levels.fyi** (via Scrapling) - Curated internship listings with salary data
+- **Google Jobs** (via SerpApi) - Google's job aggregation platform with conservative quota management (250/month)
+- **LinkedIn** (via SerpApi) - Professional network job listings
+- **Indeed** (disabled) - Major job board with internship filter
 
 ## How It Works
 

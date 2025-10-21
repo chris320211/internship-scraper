@@ -92,6 +92,11 @@ function isSearchUrl(url) {
       return true;
     }
 
+    // Google Jobs URLs with ibp=htl;jobs parameter are valid job postings (check before generic q= check)
+    if (hostname.includes('google.com') && query.includes('ibp=htl;jobs')) {
+      return false;
+    }
+
     if (
       !hasJobIdentifier &&
       (query.includes('search=') || query.includes('keyword=') || query.includes('keywords=') || query.includes('q='))
