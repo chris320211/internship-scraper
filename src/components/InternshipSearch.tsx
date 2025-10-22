@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Bookmark, RefreshCw, Sparkles, AlertCircle, LogOut } from 'lucide-react';
 import PromptSetup from './PromptSetup';
 import InternshipCard from './InternshipCard';
@@ -9,12 +9,15 @@ import { api } from '../lib/api';
 import { JOB_TYPE_KEYWORDS } from '../lib/jobTypes';
 import { useAuth } from '../contexts/AuthContext';
 
+const ITEMS_PER_PAGE = 12; // Show 12 internships at a time (4 rows of 3)
+
 function InternshipSearch() {
   const { user, logout } = useAuth();
   const [showSetup, setShowSetup] = useState(true);
   const [userPrompt, setUserPrompt] = useState('');
   const [internships, setInternships] = useState<Internship[]>([]);
   const [filteredInternships, setFilteredInternships] = useState<Internship[]>([]);
+  const [displayedCount, setDisplayedCount] = useState(ITEMS_PER_PAGE);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random()}`);
@@ -36,6 +39,7 @@ function InternshipSearch() {
 
   useEffect(() => {
     applyFilters();
+    setDisplayedCount(ITEMS_PER_PAGE); // Reset to first page when filters change
   }, [internships, searchQuery, selectedJobTypes, selectedYears, showRemoteOnly, showSavedOnly, savedIds]);
 
   const fetchInternships = async () => {
@@ -203,7 +207,27 @@ function InternshipSearch() {
     setSelectedYears([]);
     setShowRemoteOnly(false);
     setShowSavedOnly(false);
+    setDisplayedCount(ITEMS_PER_PAGE);
   };
+
+  // Infinite scroll observer
+  const observer = useRef<IntersectionObserver | null>(null);
+
+  const lastInternshipRef = useCallback((node: HTMLDivElement | null) => {
+    if (loading) return;
+    if (observer.current) observer.current.disconnect();
+
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && displayedCount < filteredInternships.length) {
+        setDisplayedCount(prev => Math.min(prev + ITEMS_PER_PAGE, filteredInternships.length));
+      }
+    });
+
+    if (node) observer.current.observe(node);
+  }, [loading, displayedCount, filteredInternships.length]);
+
+  const displayedInternships = filteredInternships.slice(0, displayedCount);
+  const hasMore = displayedCount < filteredInternships.length;
 
   if (showSetup) {
     return <PromptSetup onComplete={handlePromptComplete} />;
@@ -226,7 +250,8 @@ function InternshipSearch() {
               </div>
             </div>
             <p className="text-slate-600">
-              {filteredInternships.length} opportunities matching your search
+              Showing <span className="font-semibold text-blue-600">{displayedInternships.length}</span> of{' '}
+              <span className="font-semibold">{filteredInternships.length}</span> opportunities
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -317,16 +342,49 @@ function InternshipSearch() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredInternships.map((internship) => (
-              <InternshipCard
-                key={internship.id}
-                internship={internship}
-                isSaved={savedIds.has(internship.id)}
-                onToggleSave={toggleSaveInternship}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {displayedInternships.map((internship, index) => {
+                // Attach observer to the 3rd-to-last item to trigger loading before reaching the end
+                if (index === displayedInternships.length - 3) {
+                  return (
+                    <div key={internship.id} ref={lastInternshipRef}>
+                      <InternshipCard
+                        internship={internship}
+                        isSaved={savedIds.has(internship.id)}
+                        onToggleSave={toggleSaveInternship}
+                      />
+                    </div>
+                  );
+                }
+                return (
+                  <InternshipCard
+                    key={internship.id}
+                    internship={internship}
+                    isSaved={savedIds.has(internship.id)}
+                    onToggleSave={toggleSaveInternship}
+                  />
+                );
+              })}
+            </div>
+
+            {hasMore && (
+              <div className="mt-8 flex justify-center">
+                <div className="animate-pulse flex items-center gap-2 text-slate-600">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent"></div>
+                  <span className="text-sm">Loading more...</span>
+                </div>
+              </div>
+            )}
+
+            {!hasMore && filteredInternships.length > ITEMS_PER_PAGE && (
+              <div className="mt-8 text-center">
+                <p className="text-sm text-slate-600">
+                  You've reached the end! Showing all {filteredInternships.length} internships.
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
