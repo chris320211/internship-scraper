@@ -8,7 +8,6 @@ CREATE TABLE IF NOT EXISTS internships (
     job_type TEXT NOT NULL,
     location TEXT NOT NULL,
     eligible_years TEXT[] DEFAULT '{}',
-    graduation_years INTEGER[] DEFAULT '{}', -- e.g., [2025, 2026, 2027] for graduates
     posted_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     application_deadline TIMESTAMP WITH TIME ZONE,
     application_url TEXT,
@@ -18,6 +17,9 @@ CREATE TABLE IF NOT EXISTS internships (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     last_seen_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Drop graduation_years column if it exists
+ALTER TABLE internships DROP COLUMN IF EXISTS graduation_years;
 
 -- Create indexes for faster queries
 CREATE INDEX IF NOT EXISTS idx_internships_company ON internships(company_name);

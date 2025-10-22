@@ -118,7 +118,6 @@ function transformJob(job, companyName) {
     job_type: categorizeJobType(job.title, job.content),
     location: location,
     eligible_years: eligibility.eligible_years,
-    graduation_years: eligibility.graduation_years,
     posted_date: job.updated_at || new Date().toISOString(),
     application_deadline: null,
     application_url: job.absolute_url,

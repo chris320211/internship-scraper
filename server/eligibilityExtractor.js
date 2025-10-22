@@ -144,13 +144,12 @@ export function extractEligibleYears(text) {
 
 /**
  * Main function to extract all eligibility information
- * Returns: { eligible_years: [], graduation_years: [] }
+ * Returns: { eligible_years: [] }
  */
 export function extractEligibility(title, description) {
   const combinedText = `${title || ''} ${description || ''}`;
 
   return {
-    eligible_years: extractEligibleYears(combinedText),
-    graduation_years: extractGraduationYears(combinedText)
+    eligible_years: extractEligibleYears(combinedText)
   };
 }
