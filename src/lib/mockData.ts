@@ -6,6 +6,7 @@ export interface Internship {
   job_type: string;
   location: string;
   eligible_years: string[];
+  graduation_years?: number[]; // e.g., [2025, 2026, 2027]
   posted_date: string;
   application_deadline: string | null;
   application_url: string;

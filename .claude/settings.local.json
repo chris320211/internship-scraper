@@ -43,7 +43,8 @@
       "Bash(docker cp:*)",
       "Bash(docker network inspect:*)",
       "Bash(docker network disconnect:*)",
-      "Bash(docker network connect:*)"
+      "Bash(docker network connect:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

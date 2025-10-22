@@ -1,4 +1,4 @@
-import { MapPin, Calendar, DollarSign, Clock, Bookmark, ExternalLink, CheckCircle, Building2 } from 'lucide-react';
+import { MapPin, Calendar, DollarSign, Clock, Bookmark, ExternalLink, CheckCircle, Building2, GraduationCap } from 'lucide-react';
 import { useState } from 'react';
 import { Internship } from '../lib/mockData';
 import { getCompanyLogo } from '../lib/companyLogos';
@@ -92,6 +92,12 @@ export default function InternshipCard({ internship, isSaved, onToggleSave }: In
             {year}
           </span>
         ))}
+        {internship.graduation_years && internship.graduation_years.length > 0 && (
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
+            <GraduationCap className="w-3 h-3" />
+            Graduating {internship.graduation_years.join(', ')}
+          </span>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 mb-4">

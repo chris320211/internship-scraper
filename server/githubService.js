@@ -1,4 +1,5 @@
 import { categorizeJobType } from './jobTypeClassifier.js';
+import { extractEligibility } from './eligibilityExtractor.js';
 
 /**
  * GitHub Repository Data Integration
@@ -123,14 +124,19 @@ function parseSimplifyFormat(data, sourceName) {
       }
     }
 
+    const title = job.title || job.role || 'Internship';
+    const description = job.description || '';
+    const eligibility = extractEligibility(title, description);
+
     return {
       id: id.substring(0, 255), // Ensure ID isn't too long
       company_name: job.company_name || job.company || 'Unknown',
-      position_title: job.title || job.role || 'Internship',
-      description: job.description || `${job.title || 'Internship'} at ${job.company_name || job.company}`,
-      job_type: categorizeJobType(job.title || job.role || '', job.description || ''),
+      position_title: title,
+      description: description || `${title} at ${job.company_name || job.company}`,
+      job_type: categorizeJobType(title, description),
       location: job.location || job.locations?.join(', ') || 'Remote',
-      eligible_years: determineEligibleYears(job),
+      eligible_years: eligibility.eligible_years,
+      graduation_years: eligibility.graduation_years,
       posted_date: postedDate,
       application_deadline: job.application_deadline || null,
       application_url: job.url || job.application_url || null,
@@ -162,14 +168,19 @@ function parseCodingCrashkourseFormat(data, sourceName) {
   return internships.map(job => {
     const id = `github-coding-crashkourse-${job.id || job.url || Math.random().toString(36).substring(7)}`;
 
+    const title = job.title || job.position || 'Internship';
+    const description = job.description || '';
+    const eligibility = extractEligibility(title, description);
+
     return {
       id: id.substring(0, 255),
       company_name: job.company || job.company_name || 'Unknown',
-      position_title: job.title || job.position || 'Internship',
-      description: job.description || `${job.title || 'Internship'} at ${job.company || job.company_name}`,
-      job_type: categorizeJobType(job.title || job.position || '', job.description || ''),
+      position_title: title,
+      description: description || `${title} at ${job.company || job.company_name}`,
+      job_type: categorizeJobType(title, description),
       location: job.location || 'Remote',
-      eligible_years: determineEligibleYears(job),
+      eligible_years: eligibility.eligible_years,
+      graduation_years: eligibility.graduation_years,
       posted_date: job.posted || job.date || new Date().toISOString(),
       application_deadline: null,
       application_url: job.url || job.link || null,

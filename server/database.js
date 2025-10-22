@@ -187,9 +187,9 @@ export async function upsertInternship(internship) {
   const query = `
     INSERT INTO internships (
       id, company_name, position_title, description, job_type, location,
-      eligible_years, posted_date, application_deadline, application_url,
+      eligible_years, graduation_years, posted_date, application_deadline, application_url,
       is_active, source, last_seen_at
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
     ON CONFLICT (id)
     DO UPDATE SET
       position_title = EXCLUDED.position_title,
@@ -197,6 +197,7 @@ export async function upsertInternship(internship) {
       job_type = EXCLUDED.job_type,
       location = EXCLUDED.location,
       eligible_years = EXCLUDED.eligible_years,
+      graduation_years = EXCLUDED.graduation_years,
       application_url = EXCLUDED.application_url,
       is_active = EXCLUDED.is_active,
       last_seen_at = NOW()
@@ -211,6 +212,7 @@ export async function upsertInternship(internship) {
     internship.job_type,
     internship.location,
     internship.eligible_years || [],
+    internship.graduation_years || [],
     internship.posted_date || new Date().toISOString(),
     internship.application_deadline || null,
     internship.application_url,
@@ -244,9 +246,9 @@ export async function bulkUpsertInternships(internships) {
         `
         INSERT INTO internships (
           id, company_name, position_title, description, job_type, location,
-          eligible_years, posted_date, application_deadline, application_url,
+          eligible_years, graduation_years, posted_date, application_deadline, application_url,
           is_active, source, last_seen_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
         ON CONFLICT (id)
         DO UPDATE SET
           position_title = EXCLUDED.position_title,
@@ -254,6 +256,7 @@ export async function bulkUpsertInternships(internships) {
           job_type = EXCLUDED.job_type,
           location = EXCLUDED.location,
           eligible_years = EXCLUDED.eligible_years,
+          graduation_years = EXCLUDED.graduation_years,
           application_url = EXCLUDED.application_url,
           is_active = EXCLUDED.is_active,
           last_seen_at = NOW(),
@@ -268,6 +271,7 @@ export async function bulkUpsertInternships(internships) {
           internship.job_type,
           internship.location,
           internship.eligible_years || [],
+          internship.graduation_years || [],
           internship.posted_date || new Date().toISOString(),
           internship.application_deadline || null,
           internship.application_url,

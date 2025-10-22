@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS internships (
     job_type TEXT NOT NULL,
     location TEXT NOT NULL,
     eligible_years TEXT[] DEFAULT '{}',
+    graduation_years INTEGER[] DEFAULT '{}', -- e.g., [2025, 2026, 2027] for graduates
     posted_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     application_deadline TIMESTAMP WITH TIME ZONE,
     application_url TEXT,
@@ -56,6 +57,50 @@ CREATE TABLE IF NOT EXISTS scraping_logs (
 
 CREATE INDEX IF NOT EXISTS idx_scraping_logs_source ON scraping_logs(source);
 CREATE INDEX IF NOT EXISTS idx_scraping_logs_started ON scraping_logs(started_at DESC);
+
+-- Create users table
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+-- Create user profiles table
+CREATE TABLE IF NOT EXISTS user_profiles (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    college_year TEXT, -- 'Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate'
+    career_interests TEXT[] DEFAULT '{}', -- Array of career interests
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
+
+-- Update saved_internships to use user_id instead of session_id
+ALTER TABLE saved_internships
+ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS idx_saved_user ON saved_internships(user_id);
+
+-- Trigger to auto-update updated_at for users
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+CREATE TRIGGER update_users_updated_at
+    BEFORE UPDATE ON users
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Trigger to auto-update updated_at for user_profiles
+DROP TRIGGER IF EXISTS update_user_profiles_updated_at ON user_profiles;
+CREATE TRIGGER update_user_profiles_updated_at
+    BEFORE UPDATE ON user_profiles
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()

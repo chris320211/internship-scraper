@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { getInternships, getDatabaseStats, getScrapingStats, databaseReady } from './database.js';
 import { setupScraperJobs, runInitialScrape, runAllScrapers } from './scraperJob.js';
+import { signup, login, createUserProfile, updateUserProfile, getUserProfile } from './authService.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -99,6 +100,120 @@ app.get('/api/stats', async (req, res) => {
     console.error('Error fetching stats:', error);
     res.status(500).json({
       error: 'Failed to fetch statistics',
+      message: error.message,
+    });
+  }
+});
+
+// Auth routes
+app.post('/api/auth/signup', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        error: 'Email and password are required',
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        error: 'Password must be at least 6 characters',
+      });
+    }
+
+    const user = await signup(email, password);
+
+    res.status(201).json({
+      message: 'User created successfully',
+      user: {
+        id: user.id,
+        email: user.email,
+      },
+    });
+  } catch (error) {
+    console.error('Error in signup:', error);
+    if (error.message === 'User already exists') {
+      return res.status(409).json({
+        error: error.message,
+      });
+    }
+    res.status(500).json({
+      error: 'Failed to create user',
+      message: error.message,
+    });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        error: 'Email and password are required',
+      });
+    }
+
+    const user = await login(email, password);
+
+    res.json({
+      message: 'Login successful',
+      user,
+    });
+  } catch (error) {
+    console.error('Error in login:', error);
+    if (error.message === 'Invalid credentials') {
+      return res.status(401).json({
+        error: error.message,
+      });
+    }
+    res.status(500).json({
+      error: 'Failed to login',
+      message: error.message,
+    });
+  }
+});
+
+// User profile routes
+app.post('/api/profile', async (req, res) => {
+  try {
+    const { userId, collegeYear, careerInterests } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        error: 'User ID is required',
+      });
+    }
+
+    const profile = await updateUserProfile(userId, collegeYear, careerInterests);
+
+    res.json({
+      message: 'Profile saved successfully',
+      profile,
+    });
+  } catch (error) {
+    console.error('Error saving profile:', error);
+    res.status(500).json({
+      error: 'Failed to save profile',
+      message: error.message,
+    });
+  }
+});
+
+app.get('/api/profile/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const profile = await getUserProfile(userId);
+
+    res.json({
+      profile,
+    });
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    res.status(500).json({
+      error: 'Failed to fetch profile',
       message: error.message,
     });
   }

@@ -1,5 +1,6 @@
 import { GREENHOUSE_COMPANIES } from './companies.js';
 import { categorizeJobType } from './jobTypeClassifier.js';
+import { extractEligibility } from './eligibilityExtractor.js';
 
 const GREENHOUSE_API_BASE = 'https://boards-api.greenhouse.io/v1/boards';
 
@@ -107,6 +108,7 @@ function cleanDescription(html) {
  */
 function transformJob(job, companyName) {
   const location = job.location?.name || 'Remote';
+  const eligibility = extractEligibility(job.title, job.content);
 
   return {
     id: `${companyName.toLowerCase()}-${job.id}`,
@@ -115,7 +117,8 @@ function transformJob(job, companyName) {
     description: cleanDescription(job.content),
     job_type: categorizeJobType(job.title, job.content),
     location: location,
-    eligible_years: determineEligibleYears(job),
+    eligible_years: eligibility.eligible_years,
+    graduation_years: eligibility.graduation_years,
     posted_date: job.updated_at || new Date().toISOString(),
     application_deadline: null,
     application_url: job.absolute_url,
