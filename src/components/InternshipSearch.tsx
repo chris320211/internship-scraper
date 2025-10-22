@@ -56,9 +56,11 @@ function InternshipSearch() {
     }
   };
 
-  const fetchSavedInternships = () => {
+  const fetchSavedInternships = async () => {
+    if (!user) return;
+
     try {
-      const savedInternshipIds = localStorageDB.getSavedInternships(sessionId);
+      const savedInternshipIds = await api.getSavedInternships(user.id);
       setSavedIds(new Set(savedInternshipIds));
     } catch (error) {
       console.error('Error fetching saved internships:', error);
@@ -130,19 +132,21 @@ function InternshipSearch() {
     setShowSetup(false);
   };
 
-  const toggleSaveInternship = (internshipId: string) => {
+  const toggleSaveInternship = async (internshipId: string) => {
+    if (!user) return;
+
     const isSaved = savedIds.has(internshipId);
 
     try {
       if (isSaved) {
-        localStorageDB.unsaveInternship(sessionId, internshipId);
+        await api.unsaveInternship(user.id, internshipId);
         setSavedIds((prev) => {
           const newSet = new Set(prev);
           newSet.delete(internshipId);
           return newSet;
         });
       } else {
-        localStorageDB.saveInternship(sessionId, internshipId);
+        await api.saveInternship(user.id, internshipId);
         setSavedIds((prev) => new Set([...prev, internshipId]));
       }
     } catch (error) {

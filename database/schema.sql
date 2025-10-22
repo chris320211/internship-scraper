@@ -30,15 +30,29 @@ CREATE INDEX IF NOT EXISTS idx_internships_posted_date ON internships(posted_dat
 -- Create user saved internships table
 CREATE TABLE IF NOT EXISTS saved_internships (
     id SERIAL PRIMARY KEY,
-    session_id TEXT NOT NULL,
+    session_id TEXT NOT NULL DEFAULT '',
     internship_id TEXT REFERENCES internships(id) ON DELETE CASCADE,
     status TEXT DEFAULT 'saved',
     saved_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     notes TEXT,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE(session_id, internship_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_saved_session ON saved_internships(session_id);
+CREATE INDEX IF NOT EXISTS idx_saved_user ON saved_internships(user_id);
+
+-- Add unique constraint for user_id and internship_id combination
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'unique_user_internship'
+    ) THEN
+        ALTER TABLE saved_internships
+        ADD CONSTRAINT unique_user_internship UNIQUE (user_id, internship_id);
+    END IF;
+END$$;
 
 -- Create scraping logs table
 CREATE TABLE IF NOT EXISTS scraping_logs (
@@ -80,12 +94,6 @@ CREATE TABLE IF NOT EXISTS user_profiles (
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
-
--- Update saved_internships to use user_id instead of session_id
-ALTER TABLE saved_internships
-ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
-
-CREATE INDEX IF NOT EXISTS idx_saved_user ON saved_internships(user_id);
 
 -- Trigger to auto-update updated_at for users
 DROP TRIGGER IF EXISTS update_users_updated_at ON users;

@@ -472,4 +472,47 @@ export async function markOldInternshipsInactive(daysOld = 90) {
   return result.rows.length;
 }
 
+// Get saved internships for a user
+export async function getSavedInternships(userId) {
+  const result = await pool.query(
+    `SELECT si.internship_id, si.status, si.saved_at, si.notes
+     FROM saved_internships si
+     WHERE si.user_id = $1
+     ORDER BY si.saved_at DESC`,
+    [userId]
+  );
+  return result.rows;
+}
+
+// Save an internship for a user
+export async function saveInternship(userId, internshipId) {
+  // First check if already saved
+  const existing = await pool.query(
+    `SELECT * FROM saved_internships WHERE user_id = $1 AND internship_id = $2`,
+    [userId, internshipId]
+  );
+
+  if (existing.rows.length > 0) {
+    return existing.rows[0];
+  }
+
+  // Insert new saved internship
+  const result = await pool.query(
+    `INSERT INTO saved_internships (user_id, internship_id, status, saved_at, session_id)
+     VALUES ($1, $2, 'saved', NOW(), '')
+     RETURNING *`,
+    [userId, internshipId]
+  );
+  return result.rows[0];
+}
+
+// Unsave an internship for a user
+export async function unsaveInternship(userId, internshipId) {
+  await pool.query(
+    `DELETE FROM saved_internships
+     WHERE user_id = $1 AND internship_id = $2`,
+    [userId, internshipId]
+  );
+}
+
 export default pool;

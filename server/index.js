@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { getInternships, getDatabaseStats, getScrapingStats, databaseReady } from './database.js';
+import { getInternships, getDatabaseStats, getScrapingStats, databaseReady, getSavedInternships, saveInternship, unsaveInternship } from './database.js';
 import { setupScraperJobs, runInitialScrape, runAllScrapers } from './scraperJob.js';
 import { signup, login, createUserProfile, updateUserProfile, getUserProfile } from './authService.js';
 
@@ -214,6 +214,80 @@ app.get('/api/profile/:userId', async (req, res) => {
     console.error('Error fetching profile:', error);
     res.status(500).json({
       error: 'Failed to fetch profile',
+      message: error.message,
+    });
+  }
+});
+
+// Saved internships routes
+app.get('/api/saved-internships/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({
+        error: 'User ID is required',
+      });
+    }
+
+    const savedInternships = await getSavedInternships(userId);
+
+    res.json({
+      savedInternships,
+    });
+  } catch (error) {
+    console.error('Error fetching saved internships:', error);
+    res.status(500).json({
+      error: 'Failed to fetch saved internships',
+      message: error.message,
+    });
+  }
+});
+
+app.post('/api/saved-internships', async (req, res) => {
+  try {
+    const { userId, internshipId } = req.body;
+
+    if (!userId || !internshipId) {
+      return res.status(400).json({
+        error: 'User ID and Internship ID are required',
+      });
+    }
+
+    const savedInternship = await saveInternship(userId, internshipId);
+
+    res.status(201).json({
+      message: 'Internship saved successfully',
+      savedInternship,
+    });
+  } catch (error) {
+    console.error('Error saving internship:', error);
+    res.status(500).json({
+      error: 'Failed to save internship',
+      message: error.message,
+    });
+  }
+});
+
+app.delete('/api/saved-internships/:userId/:internshipId', async (req, res) => {
+  try {
+    const { userId, internshipId } = req.params;
+
+    if (!userId || !internshipId) {
+      return res.status(400).json({
+        error: 'User ID and Internship ID are required',
+      });
+    }
+
+    await unsaveInternship(userId, internshipId);
+
+    res.json({
+      message: 'Internship unsaved successfully',
+    });
+  } catch (error) {
+    console.error('Error unsaving internship:', error);
+    res.status(500).json({
+      error: 'Failed to unsave internship',
       message: error.message,
     });
   }

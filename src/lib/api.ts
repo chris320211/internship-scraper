@@ -130,4 +130,63 @@ export const api = {
       return false;
     }
   },
+
+  /**
+   * Get saved internships for a user
+   */
+  async getSavedInternships(userId: number): Promise<string[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/saved-internships/${userId}`);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch saved internships: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return (data.savedInternships || []).map((item: any) => item.internship_id);
+    } catch (error) {
+      console.error('Error fetching saved internships:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Save an internship for a user
+   */
+  async saveInternship(userId: number, internshipId: string): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/saved-internships`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId, internshipId }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to save internship: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Error saving internship:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Unsave an internship for a user
+   */
+  async unsaveInternship(userId: number, internshipId: string): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/saved-internships/${userId}/${internshipId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to unsave internship: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Error unsaving internship:', error);
+      throw error;
+    }
+  },
 };
