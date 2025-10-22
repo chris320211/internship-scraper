@@ -5,7 +5,6 @@ CREATE TABLE IF NOT EXISTS internships (
     id TEXT PRIMARY KEY,
     company_name TEXT NOT NULL,
     position_title TEXT NOT NULL,
-    description TEXT,
     job_type TEXT NOT NULL,
     location TEXT NOT NULL,
     eligible_years TEXT[] DEFAULT '{}',

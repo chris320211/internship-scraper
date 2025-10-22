@@ -186,14 +186,13 @@ export async function upsertInternship(internship) {
 
   const query = `
     INSERT INTO internships (
-      id, company_name, position_title, description, job_type, location,
+      id, company_name, position_title, job_type, location,
       eligible_years, graduation_years, posted_date, application_deadline, application_url,
       is_active, source, last_seen_at
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
     ON CONFLICT (id)
     DO UPDATE SET
       position_title = EXCLUDED.position_title,
-      description = EXCLUDED.description,
       job_type = EXCLUDED.job_type,
       location = EXCLUDED.location,
       eligible_years = EXCLUDED.eligible_years,
@@ -208,7 +207,6 @@ export async function upsertInternship(internship) {
     internship.id,
     companyName,
     internship.position_title,
-    sanitizedDescription,
     internship.job_type,
     internship.location,
     internship.eligible_years || [],
@@ -245,14 +243,13 @@ export async function bulkUpsertInternships(internships) {
       const result = await client.query(
         `
         INSERT INTO internships (
-          id, company_name, position_title, description, job_type, location,
+          id, company_name, position_title, job_type, location,
           eligible_years, graduation_years, posted_date, application_deadline, application_url,
           is_active, source, last_seen_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
         ON CONFLICT (id)
         DO UPDATE SET
           position_title = EXCLUDED.position_title,
-          description = EXCLUDED.description,
           job_type = EXCLUDED.job_type,
           location = EXCLUDED.location,
           eligible_years = EXCLUDED.eligible_years,
@@ -267,7 +264,6 @@ export async function bulkUpsertInternships(internships) {
           internship.id,
           companyName,
           internship.position_title,
-          sanitizeDescription(internship.description),
           internship.job_type,
           internship.location,
           internship.eligible_years || [],
