@@ -8,8 +8,27 @@ import { extractEligibility } from './eligibilityExtractor.js';
 
 // GitHub raw file URLs for internship repositories
 const GITHUB_SOURCES = {
-  simplify: {
-    name: 'SimplifyJobs',
+  simplify2026: {
+    name: 'SimplifyJobs 2026',
+    url: 'https://raw.githubusercontent.com/SimplifyJobs/Summer2026-Internships/dev/.github/scripts/listings.json',
+    format: 'json',
+    repo: 'SimplifyJobs/Summer2026-Internships'
+  },
+  vansh2026: {
+    name: 'Vansh 2026',
+    url: 'https://raw.githubusercontent.com/vanshb03/Summer2026-Internships/dev/.github/scripts/listings.json',
+    format: 'json',
+    repo: 'vanshb03/Summer2026-Internships'
+  },
+  summer2026internships: {
+    name: 'Summer2026 Internships',
+    url: 'https://raw.githubusercontent.com/summer2026internships/Summer2026-Internships/main/.github/scripts/listings.json',
+    format: 'json',
+    repo: 'summer2026internships/Summer2026-Internships'
+  },
+  // Keep 2025 sources as fallback
+  simplify2025: {
+    name: 'SimplifyJobs 2025',
     url: 'https://raw.githubusercontent.com/SimplifyJobs/Summer2025-Internships/dev/.github/scripts/listings.json',
     format: 'json',
     repo: 'SimplifyJobs/Summer2025-Internships'
@@ -19,14 +38,6 @@ const GITHUB_SOURCES = {
     url: 'https://raw.githubusercontent.com/pittcsc/Summer2025-Internships/dev/.github/scripts/listings.json',
     format: 'json',
     repo: 'pittcsc/Summer2025-Internships'
-  },
-  codingcrashkourse: {
-    name: 'Coding Crashkourse',
-    // This repo uses a different structure, will need to check README.md
-    url: 'https://raw.githubusercontent.com/Coding-Crashkurse/Internships/main/internships.json',
-    format: 'json',
-    repo: 'Coding-Crashkurse/Internships',
-    fallback: 'https://api.github.com/repos/Coding-Crashkurse/Internships/contents/'
   }
 };
 
@@ -197,38 +208,58 @@ export async function fetchAllGitHubInternships() {
   const startTime = Date.now();
 
   const results = await Promise.allSettled([
-    fetchGitHubData(GITHUB_SOURCES.simplify),
+    fetchGitHubData(GITHUB_SOURCES.simplify2026),
+    fetchGitHubData(GITHUB_SOURCES.vansh2026),
+    fetchGitHubData(GITHUB_SOURCES.summer2026internships),
+    fetchGitHubData(GITHUB_SOURCES.simplify2025),
     fetchGitHubData(GITHUB_SOURCES.pittcsc),
-    fetchGitHubData(GITHUB_SOURCES.codingcrashkourse),
   ]);
 
   let allInternships = [];
 
-  // Parse SimplifyJobs
+  // Parse SimplifyJobs 2026
   if (results[0].status === 'fulfilled' && results[0].value) {
-    const simplifyInternships = parseSimplifyFormat(results[0].value, 'SimplifyJobs');
-    console.log(`✅ SimplifyJobs: ${simplifyInternships.length} internships`);
-    allInternships = allInternships.concat(simplifyInternships);
+    const internships = parseSimplifyFormat(results[0].value, 'SimplifyJobs 2026');
+    console.log(`✅ SimplifyJobs 2026: ${internships.length} internships`);
+    allInternships = allInternships.concat(internships);
   } else {
-    console.warn('❌ SimplifyJobs: Failed to fetch');
+    console.warn('❌ SimplifyJobs 2026: Failed to fetch');
   }
 
-  // Parse Pitt CSC
+  // Parse Vansh 2026
   if (results[1].status === 'fulfilled' && results[1].value) {
-    const pittInternships = parseSimplifyFormat(results[1].value, 'Pitt CSC');
+    const internships = parseSimplifyFormat(results[1].value, 'Vansh 2026');
+    console.log(`✅ Vansh 2026: ${internships.length} internships`);
+    allInternships = allInternships.concat(internships);
+  } else {
+    console.warn('❌ Vansh 2026: Failed to fetch');
+  }
+
+  // Parse Summer2026 Internships
+  if (results[2].status === 'fulfilled' && results[2].value) {
+    const internships = parseSimplifyFormat(results[2].value, 'Summer2026 Internships');
+    console.log(`✅ Summer2026 Internships: ${internships.length} internships`);
+    allInternships = allInternships.concat(internships);
+  } else {
+    console.warn('❌ Summer2026 Internships: Failed to fetch');
+  }
+
+  // Parse SimplifyJobs 2025 (fallback)
+  if (results[3].status === 'fulfilled' && results[3].value) {
+    const internships = parseSimplifyFormat(results[3].value, 'SimplifyJobs 2025');
+    console.log(`✅ SimplifyJobs 2025: ${internships.length} internships`);
+    allInternships = allInternships.concat(internships);
+  } else {
+    console.warn('❌ SimplifyJobs 2025: Failed to fetch');
+  }
+
+  // Parse Pitt CSC (fallback)
+  if (results[4].status === 'fulfilled' && results[4].value) {
+    const pittInternships = parseSimplifyFormat(results[4].value, 'Pitt CSC');
     console.log(`✅ Pitt CSC: ${pittInternships.length} internships`);
     allInternships = allInternships.concat(pittInternships);
   } else {
     console.warn('❌ Pitt CSC: Failed to fetch');
-  }
-
-  // Parse Coding Crashkourse
-  if (results[2].status === 'fulfilled' && results[2].value) {
-    const ccInternships = parseCodingCrashkourseFormat(results[2].value, 'Coding Crashkourse');
-    console.log(`✅ Coding Crashkourse: ${ccInternships.length} internships`);
-    allInternships = allInternships.concat(ccInternships);
-  } else {
-    console.warn('❌ Coding Crashkourse: Failed to fetch');
   }
 
   // Deduplicate by URL (many repos might have overlapping data)

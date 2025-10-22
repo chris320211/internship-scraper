@@ -29,6 +29,7 @@ function InternshipSearch() {
   const [showActiveFilters, setShowActiveFilters] = useState(false);
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(0);
 
   useEffect(() => {
     if (!showSetup) {
@@ -216,6 +217,8 @@ function InternshipSearch() {
 
   // Infinite scroll observer
   const observer = useRef<IntersectionObserver | null>(null);
+  const visibilityObserver = useRef<IntersectionObserver | null>(null);
+  const cardRefs = useRef<Set<string>>(new Set());
 
   const lastInternshipRef = useCallback((node: HTMLDivElement | null) => {
     if (loading) return;
@@ -230,7 +233,53 @@ function InternshipSearch() {
     if (node) observer.current.observe(node);
   }, [loading, displayedCount, filteredInternships.length]);
 
+  // Track visible internships in viewport - accumulate as user scrolls
+  useEffect(() => {
+    visibilityObserver.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          const id = entry.target.getAttribute('data-internship-id');
+          if (id && entry.isIntersecting) {
+            // Only add, never remove - accumulate count as user scrolls
+            cardRefs.current.add(id);
+            setVisibleCount(cardRefs.current.size);
+          }
+        });
+      },
+      {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.1, // Consider visible if at least 10% is in viewport
+      }
+    );
+
+    return () => {
+      if (visibilityObserver.current) {
+        visibilityObserver.current.disconnect();
+      }
+      cardRefs.current.clear();
+    };
+  }, []);
+
   const displayedInternships = filteredInternships.slice(0, displayedCount);
+
+  // Reset visible count when filters change
+  useEffect(() => {
+    cardRefs.current.clear();
+    setVisibleCount(0);
+  }, [searchQuery, selectedJobTypes, selectedYears, showRemoteOnly, showSavedOnly]);
+
+  // Re-observe cards when displayedInternships changes
+  useEffect(() => {
+    const observer = visibilityObserver.current;
+    if (!observer) return;
+
+    // Re-observe all cards when new ones are loaded
+    const allCards = document.querySelectorAll('[data-internship-id]');
+    allCards.forEach(card => {
+      observer.observe(card);
+    });
+  }, [displayedInternships.length]);
   const hasMore = displayedCount < filteredInternships.length;
 
   if (showSetup) {
@@ -256,7 +305,7 @@ function InternshipSearch() {
                 </div>
               </div>
               <p className="text-slate-600">
-                Showing <span className="font-semibold text-blue-600">{displayedInternships.length}</span> of{' '}
+                Showing <span className="font-semibold text-blue-600">{visibleCount}</span> of{' '}
                 <span className="font-semibold">{filteredInternships.length}</span> opportunities
               </p>
             </div>
@@ -359,7 +408,16 @@ function InternshipSearch() {
                 // Attach observer to the 3rd-to-last item to trigger loading before reaching the end
                 if (index === displayedInternships.length - 3) {
                   return (
-                    <div key={internship.id} ref={lastInternshipRef}>
+                    <div
+                      key={internship.id}
+                      ref={(node) => {
+                        lastInternshipRef(node);
+                        if (node && visibilityObserver.current) {
+                          node.setAttribute('data-internship-id', internship.id);
+                          visibilityObserver.current.observe(node);
+                        }
+                      }}
+                    >
                       <InternshipCard
                         internship={internship}
                         isSaved={savedIds.has(internship.id)}
@@ -369,12 +427,21 @@ function InternshipSearch() {
                   );
                 }
                 return (
-                  <InternshipCard
+                  <div
                     key={internship.id}
-                    internship={internship}
-                    isSaved={savedIds.has(internship.id)}
-                    onToggleSave={toggleSaveInternship}
-                  />
+                    ref={(node) => {
+                      if (node && visibilityObserver.current) {
+                        node.setAttribute('data-internship-id', internship.id);
+                        visibilityObserver.current.observe(node);
+                      }
+                    }}
+                  >
+                    <InternshipCard
+                      internship={internship}
+                      isSaved={savedIds.has(internship.id)}
+                      onToggleSave={toggleSaveInternship}
+                    />
+                  </div>
                 );
               })}
             </div>
