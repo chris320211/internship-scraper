@@ -239,74 +239,81 @@ function InternshipSearch() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-600 rounded-xl shadow-md">
-                <Sparkles className="w-6 h-6 text-white" />
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-50 bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 shadow-md">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-600 rounded-xl shadow-md">
+                  <Sparkles className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-slate-900">Internship Finder</h1>
+                  {userPrompt && (
+                    <p className="text-sm text-slate-500 italic mt-0.5">"{userPrompt}"</p>
+                  )}
+                </div>
               </div>
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900">Internship Finder</h1>
-                {userPrompt && (
-                  <p className="text-sm text-slate-500 italic mt-0.5">"{userPrompt}"</p>
-                )}
-              </div>
+              <p className="text-slate-600">
+                Showing <span className="font-semibold text-blue-600">{displayedInternships.length}</span> of{' '}
+                <span className="font-semibold">{filteredInternships.length}</span> opportunities
+              </p>
             </div>
-            <p className="text-slate-600">
-              Showing <span className="font-semibold text-blue-600">{displayedInternships.length}</span> of{' '}
-              <span className="font-semibold">{filteredInternships.length}</span> opportunities
-            </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowSavedOnly(!showSavedOnly)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                  showSavedOnly
+                    ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 shadow-md'
+                }`}
+              >
+                <Bookmark className={`w-5 h-5 ${showSavedOnly ? 'fill-current' : ''}`} />
+                <span className="hidden sm:inline">Saved</span>
+                {savedIds.size > 0 && (
+                  <span className="bg-yellow-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">
+                    {savedIds.size}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={handleNewSearch}
+                className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg font-medium text-slate-700 hover:bg-slate-100 transition-all shadow-md"
+              >
+                <RefreshCw className="w-5 h-5" />
+                <span className="hidden sm:inline">New Search</span>
+              </button>
+              <button
+                onClick={logout}
+                className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg font-medium text-slate-700 hover:bg-slate-100 transition-all shadow-md"
+                title="Logout"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowSavedOnly(!showSavedOnly)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
-                showSavedOnly
-                  ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
-                  : 'bg-white text-slate-700 hover:bg-slate-100 shadow-md'
-              }`}
-            >
-              <Bookmark className={`w-5 h-5 ${showSavedOnly ? 'fill-current' : ''}`} />
-              <span className="hidden sm:inline">Saved</span>
-              {savedIds.size > 0 && (
-                <span className="bg-yellow-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">
-                  {savedIds.size}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={handleNewSearch}
-              className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg font-medium text-slate-700 hover:bg-slate-100 transition-all shadow-md"
-            >
-              <RefreshCw className="w-5 h-5" />
-              <span className="hidden sm:inline">New Search</span>
-            </button>
-            <button
-              onClick={logout}
-              className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg font-medium text-slate-700 hover:bg-slate-100 transition-all shadow-md"
-              title="Logout"
-            >
-              <LogOut className="w-5 h-5" />
-              <span className="hidden sm:inline">Logout</span>
-            </button>
-          </div>
-        </div>
 
-        <div className="mb-6">
-          <SearchFilters
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            selectedJobTypes={selectedJobTypes}
-            onJobTypeToggle={toggleJobType}
-            selectedYears={selectedYears}
-            onYearToggle={toggleYear}
-            showRemoteOnly={showRemoteOnly}
-            onRemoteOnlyToggle={() => setShowRemoteOnly(!showRemoteOnly)}
-            showActiveFilters={showActiveFilters}
-            onToggleFilters={() => setShowActiveFilters(!showActiveFilters)}
-          />
+          <div>
+            <SearchFilters
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              selectedJobTypes={selectedJobTypes}
+              onJobTypeToggle={toggleJobType}
+              selectedYears={selectedYears}
+              onYearToggle={toggleYear}
+              showRemoteOnly={showRemoteOnly}
+              onRemoteOnlyToggle={() => setShowRemoteOnly(!showRemoteOnly)}
+              showActiveFilters={showActiveFilters}
+              onToggleFilters={() => setShowActiveFilters(!showActiveFilters)}
+            />
+          </div>
         </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 py-4">
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
