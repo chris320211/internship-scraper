@@ -5,12 +5,14 @@ from scrapling.fetchers import Fetcher, StealthyFetcher
 from typing import List, Dict, Optional
 import os
 import re
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from urllib.parse import urljoin, urlparse
 from html import unescape
 from dateutil import parser as date_parser
 import requests
 from serpapi import GoogleSearch
+from smart_polling import SmartPollingManager
+from delta_scrapers import GreenhouseScraper, LeverScraper, GREENHOUSE_COMPANIES, LEVER_COMPANIES
 
 DATE_KEYWORDS = re.compile(
     r'(deadline|apply by|apply before|applications? (?:due|close|deadline)|'
@@ -628,14 +630,41 @@ class IndeedScraper(InternshipScraper):
 
 
 class LevelsFyiScraper(InternshipScraper):
-    """Scrape Levels.fyi internship postings"""
+    """Scrape Levels.fyi internship postings with smart polling"""
+
+    def __init__(self, polling_manager: Optional[SmartPollingManager] = None):
+        super().__init__()
+        self.polling_manager = polling_manager or SmartPollingManager()
+        self.source_url = "https://www.levels.fyi/internships/"
+        self.source_name = "Levels.fyi"
 
     def scrape(self) -> List[Dict]:
-        """Scrape Levels.fyi for internships"""
+        """Scrape Levels.fyi for internships with conditional requests"""
         try:
-            url = "https://www.levels.fyi/internships/"
+            url = self.source_url
 
-            page = Fetcher.get(url, timeout=30)
+            # Check if we should poll
+            if not self.polling_manager.should_poll_source(url, self.source_name):
+                print(f"  ⏭️  {self.source_name}: Skipping (not due for poll)")
+                return []
+
+            # Fetch with conditional request
+            try:
+                content, status, headers = self.polling_manager.fetch_with_conditional_request(
+                    url, self.source_name
+                )
+
+                if status == 304:
+                    # Not modified, no need to process
+                    return []
+
+                # Parse HTML from content
+                from scrapling import Adaptor
+                page = Adaptor.from_html(content, url)
+
+            except Exception:
+                # Fallback to regular fetch if conditional request fails
+                page = Fetcher.get(url, timeout=30)
 
             jobs = []
             rows = page.css('table tbody tr')[:30]
@@ -680,6 +709,10 @@ class LevelsFyiScraper(InternshipScraper):
                 except Exception as e:
                     print(f"Error parsing Levels.fyi row: {e}")
                     continue
+
+            # Detect content delta and adjust polling
+            has_changed = self.polling_manager.detect_content_delta(url, self.source_name, jobs)
+            self.polling_manager.adjust_polling_interval(url, self.source_name, has_changed)
 
             return jobs
         except Exception as e:
@@ -1206,21 +1239,68 @@ class SerpApiLinkedInScraper(InternshipScraper):
 
 
 def scrape_all_sources(keywords: str = "software engineering intern", use_google_jobs: bool = True) -> List[Dict]:
-    """Scrape all sources and combine results"""
+    """
+    Scrape all sources with smart polling and delta detection
+
+    This function implements:
+    1. Conditional requests (ETag/Last-Modified) for HTTP sources
+    2. Adaptive polling intervals based on change frequency
+    3. Delta detection for API sources (Greenhouse, Lever)
+    4. Content hashing for HTML sources
+
+    Args:
+        keywords: Search keywords
+        use_google_jobs: Whether to use Google Jobs (SerpAPI quota)
+
+    Returns:
+        List of all scraped internships
+    """
     all_jobs = []
 
+    # Initialize smart polling manager (shared across scrapers)
+    polling_manager = SmartPollingManager()
+
+    # Basic scrapers with smart polling
     scrapers = [
         # IndeedScraper(),
-        LevelsFyiScraper(),
-        GitHubInternshipScraper(),  # New multi-repo GitHub scraper
-        SerpApiLinkedInScraper(),
-        # LinkedInScraper(),  # LinkedIn might require auth
+        LevelsFyiScraper(polling_manager),  # Uses conditional requests + content hash
+        GitHubInternshipScraper(),  # GitHub provides webhooks (poll fallback)
+        SerpApiLinkedInScraper(),  # API-based, no polling needed
+        # LinkedInScraper(),  # Might require auth
     ]
 
     # Add Google Jobs scraper if enabled (conservative quota management)
     if use_google_jobs:
         scrapers.append(GoogleJobsScraper())
 
+    # Delta-friendly API scrapers (Greenhouse, Lever)
+    print("\n🔄 Delta-friendly scrapers (updated_at timestamps):")
+
+    # Greenhouse scraper - only fetch jobs updated in last 7 days
+    try:
+        print("Scraping Greenhouse boards...")
+        gh_scraper = GreenhouseScraper(GREENHOUSE_COMPANIES)
+        since = datetime.utcnow() - timedelta(days=7)
+        gh_jobs = gh_scraper.scrape_all_boards(since=since)
+        all_jobs.extend(gh_jobs)
+        print(f"Found {len(gh_jobs)} Greenhouse internships (delta: last 7 days)")
+    except Exception as e:
+        print(f"Error with Greenhouse scraper: {e}")
+
+    # Lever scraper - only fetch jobs updated in last 7 days
+    try:
+        print("Scraping Lever boards...")
+        lever_scraper = LeverScraper(LEVER_COMPANIES)
+        since = datetime.utcnow() - timedelta(days=7)
+        lever_jobs = lever_scraper.scrape_all_boards(since=since)
+        all_jobs.extend(lever_jobs)
+        print(f"Found {len(lever_jobs)} Lever internships (delta: last 7 days)")
+    except Exception as e:
+        print(f"Error with Lever scraper: {e}")
+
+    print("\n📡 Standard scrapers (with smart polling):")
+
+    # Run standard scrapers
     for scraper in scrapers:
         try:
             print(f"Scraping {scraper.__class__.__name__}...")
@@ -1233,5 +1313,16 @@ def scrape_all_sources(keywords: str = "software engineering intern", use_google
         except Exception as e:
             print(f"Error with {scraper.__class__.__name__}: {e}")
             continue
+
+    # Print polling statistics
+    print("\n📊 Polling statistics:")
+    if hasattr(LevelsFyiScraper, 'source_url'):
+        levels_stats = polling_manager.get_polling_stats(
+            "https://www.levels.fyi/internships/",
+            "Levels.fyi"
+        )
+        print(f"  Levels.fyi: {levels_stats['total_polls']} polls, "
+              f"{levels_stats['total_changes']} changes, "
+              f"interval: {levels_stats['current_poll_interval_minutes']}min")
 
     return all_jobs

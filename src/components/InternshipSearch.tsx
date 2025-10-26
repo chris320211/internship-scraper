@@ -290,18 +290,15 @@ function InternshipSearch() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
       {/* Sticky Header */}
       <div className="sticky top-0 z-50 bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 shadow-md">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-3 mb-4">
                 <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-600 rounded-xl shadow-md">
                   <Sparkles className="w-6 h-6 text-white" />
                 </div>
                 <div>
                   <h1 className="text-3xl font-bold text-slate-900">Internship Finder</h1>
-                  {userPrompt && (
-                    <p className="text-sm text-slate-500 italic mt-0.5">"{userPrompt}"</p>
-                  )}
                 </div>
               </div>
               <p className="text-slate-600">

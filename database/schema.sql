@@ -73,6 +73,51 @@ CREATE TABLE IF NOT EXISTS scraping_logs (
 CREATE INDEX IF NOT EXISTS idx_scraping_logs_source ON scraping_logs(source);
 CREATE INDEX IF NOT EXISTS idx_scraping_logs_started ON scraping_logs(started_at DESC);
 
+-- Create source polling metadata table for smart polling
+CREATE TABLE IF NOT EXISTS source_polling_metadata (
+    id SERIAL PRIMARY KEY,
+    source_url TEXT NOT NULL UNIQUE,
+    source_name TEXT NOT NULL,
+
+    -- HTTP caching headers
+    etag TEXT,
+    last_modified TEXT,
+
+    -- Polling statistics
+    last_poll_at TIMESTAMP WITH TIME ZONE,
+    last_change_at TIMESTAMP WITH TIME ZONE,
+    consecutive_unchanged_polls INTEGER DEFAULT 0,
+    total_polls INTEGER DEFAULT 0,
+    total_changes INTEGER DEFAULT 0,
+
+    -- Adaptive polling schedule
+    current_poll_interval_minutes INTEGER DEFAULT 30,
+    min_poll_interval_minutes INTEGER DEFAULT 5,
+    max_poll_interval_minutes INTEGER DEFAULT 360,
+
+    -- Response metadata
+    last_status_code INTEGER,
+    last_response_time_ms INTEGER,
+
+    -- Content tracking for delta detection
+    content_hash TEXT,
+    last_job_count INTEGER DEFAULT 0,
+
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_polling_metadata_source_url ON source_polling_metadata(source_url);
+CREATE INDEX IF NOT EXISTS idx_polling_metadata_last_poll ON source_polling_metadata(last_poll_at);
+CREATE INDEX IF NOT EXISTS idx_polling_metadata_source_name ON source_polling_metadata(source_name);
+
+-- Trigger to auto-update updated_at for source_polling_metadata
+DROP TRIGGER IF EXISTS update_source_polling_metadata_updated_at ON source_polling_metadata;
+CREATE TRIGGER update_source_polling_metadata_updated_at
+    BEFORE UPDATE ON source_polling_metadata
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
 -- Create users table
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
