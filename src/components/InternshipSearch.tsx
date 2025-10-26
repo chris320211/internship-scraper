@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Bookmark, RefreshCw, Sparkles, AlertCircle, LogOut } from 'lucide-react';
 import PromptSetup from './PromptSetup';
 import InternshipCard from './InternshipCard';

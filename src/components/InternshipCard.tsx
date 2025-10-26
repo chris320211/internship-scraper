@@ -1,5 +1,5 @@
 import { MapPin, Calendar, DollarSign, Clock, Bookmark, ExternalLink, CheckCircle, Building2, GraduationCap } from 'lucide-react';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Internship } from '../lib/mockData';
 import { getCompanyLogo } from '../lib/companyLogos';
 

@@ -1,3 +1,4 @@
+import React from 'react';
 import { Sparkles, LogIn, UserPlus, Briefcase, Search, Bookmark } from 'lucide-react';
 
 interface LandingProps {

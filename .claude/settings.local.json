@@ -45,7 +45,8 @@
       "Bash(docker network disconnect:*)",
       "Bash(docker network connect:*)",
       "Bash(npm install:*)",
-      "Bash(INTERNSHIP_ID=\"google-jobs-eyJqb2JfdGl0bGUiOiJTb2Z0d2FyZSBEZXZlbG9wZXIgSW50ZXJuc2hpcCIsImNvbXBhbnlfbmFtZSI6IkhQIiwiYWRkcmVzc19jaXR5IjoiU3ByaW5nLCBUWCIsImh0aWRvY2lkIjoiX1htM003cElFeEJ5UDNVbUFBQUFBQT09IiwiZ2wiOiJ1cyIsImhsIjoiZW4ifQ==\")"
+      "Bash(INTERNSHIP_ID=\"google-jobs-eyJqb2JfdGl0bGUiOiJTb2Z0d2FyZSBEZXZlbG9wZXIgSW50ZXJuc2hpcCIsImNvbXBhbnlfbmFtZSI6IkhQIiwiYWRkcmVzc19jaXR5IjoiU3ByaW5nLCBUWCIsImh0aWRvY2lkIjoiX1htM003cElFeEJ5UDNVbUFBQUFBQT09IiwiZ2wiOiJ1cyIsImhsIjoiZW4ifQ==\")",
+      "Bash(mv:*)"
     ],
     "deny": [],
     "ask": []

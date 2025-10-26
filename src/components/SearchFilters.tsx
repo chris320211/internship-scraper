@@ -1,3 +1,4 @@
+import React from 'react';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { JOB_TYPES } from '../lib/jobTypes';
 
