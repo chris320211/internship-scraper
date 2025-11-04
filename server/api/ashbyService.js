@@ -1,4 +1,5 @@
 import { categorizeJobType } from './jobTypeClassifier.js';
+import { extractEligibility } from './eligibilityExtractor.js';
 
 /**
  * Ashby Job Board API Integration
@@ -97,6 +98,7 @@ function cleanDescription(html) {
  */
 function transformJob(job, companyName) {
   const location = job.locationName || job.location || 'Remote';
+  const eligibility = extractEligibility(job.title, job.description);
 
   return {
     id: `ashby-${companyName.toLowerCase()}-${job.id}`,
@@ -105,7 +107,11 @@ function transformJob(job, companyName) {
     description: cleanDescription(job.description),
     job_type: categorizeJobType(job.title, job.description),
     location: location,
-    eligible_years: determineEligibleYears(job),
+    eligible_years: eligibility.eligible_years,
+    student_status: eligibility.student_status,
+    visa_requirements: eligibility.visa_requirements,
+    degree_level: eligibility.degree_level,
+    major_requirements: eligibility.major_requirements,
     posted_date: job.publishedDate ? new Date(job.publishedDate).toISOString() : new Date().toISOString(),
     application_deadline: null,
     application_url: job.jobUrl || `https://jobs.ashbyhq.com/${companyName.toLowerCase()}/${job.id}`,

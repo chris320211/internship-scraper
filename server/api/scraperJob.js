@@ -369,11 +369,12 @@ export async function runAllScrapers() {
  * Set up cron jobs for automated scraping
  */
 export function setupScraperJobs() {
-  // Run every 6 hours: 0 */6 * * *
-  // Run every hour for testing: 0 * * * *
-  const schedule = process.env.SCRAPER_SCHEDULE || '0 */6 * * *';
+  // Run every 15 minutes for near real-time updates: */15 * * * *
+  // Run every 6 hours (old default): 0 */6 * * *
+  // Run every hour: 0 * * * *
+  const schedule = process.env.SCRAPER_SCHEDULE || '*/15 * * * *';
 
-  console.log(`📅 Scheduling scraper jobs: ${schedule}`);
+  console.log(`📅 Scheduling scraper jobs: ${schedule} (every 15 minutes for near real-time updates)`);
 
   cron.schedule(schedule, async () => {
     console.log(`\n${'='.repeat(60)}`);

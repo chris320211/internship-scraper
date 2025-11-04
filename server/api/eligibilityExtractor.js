@@ -143,13 +143,205 @@ export function extractEligibleYears(text) {
 }
 
 /**
+ * Extract student status from job description
+ * Returns: 'student', 'new_grad', 'experienced', 'any'
+ */
+export function extractStudentStatus(text) {
+  if (!text) return 'any';
+
+  const lowerText = text.toLowerCase();
+
+  // Check for explicit new grad patterns
+  const newGradPatterns = [
+    /new grad/,
+    /recent grad/,
+    /early career/,
+    /entry level/,
+    /entry-level/,
+    /college grad/,
+    /university grad/,
+    /newly graduated/,
+  ];
+
+  if (newGradPatterns.some(pattern => pattern.test(lowerText))) {
+    return 'new_grad';
+  }
+
+  // Check for current student patterns (internship context)
+  const studentPatterns = [
+    /current(?:ly)?\s+(?:enrolled|pursuing)/,
+    /enrolled in/,
+    /pursuing.*degree/,
+    /intern/,
+    /co-op/,
+    /student/,
+    /undergraduate/,
+  ];
+
+  if (studentPatterns.some(pattern => pattern.test(lowerText))) {
+    return 'student';
+  }
+
+  // Check for experienced/professional patterns
+  const experiencedPatterns = [
+    /\d+\+?\s*years?\s+(?:of\s+)?experience/,
+    /experienced/,
+    /senior/,
+    /professional/,
+    /mid-level/,
+    /mid level/,
+  ];
+
+  if (experiencedPatterns.some(pattern => pattern.test(lowerText))) {
+    return 'experienced';
+  }
+
+  return 'any';
+}
+
+/**
+ * Extract visa/sponsorship requirements from job description
+ * Returns: 'us_only', 'sponsorship_available', 'sponsorship_not_available', 'unknown'
+ */
+export function extractVisaRequirements(text) {
+  if (!text) return 'unknown';
+
+  const lowerText = text.toLowerCase();
+
+  // US citizens/permanent residents only
+  const usOnlyPatterns = [
+    /must be.*(?:us citizen|u\.s\. citizen|united states citizen)/,
+    /(?:us citizen|u\.s\. citizen).*required/,
+    /(?:us|u\.s\.).*(?:permanent resident|green card)/,
+    /authorization to work in the (?:us|u\.s\.|united states).*required/,
+    /no (?:visa )?sponsorship/,
+    /(?:unable|not able) to (?:provide|offer|sponsor).*(?:visa|sponsorship)/,
+    /will not sponsor/,
+    /cannot sponsor/,
+  ];
+
+  if (usOnlyPatterns.some(pattern => pattern.test(lowerText))) {
+    // Double check it's not saying they DO sponsor
+    if (!lowerText.includes('will sponsor') && !lowerText.includes('can sponsor')) {
+      return 'us_only';
+    }
+  }
+
+  // Sponsorship available
+  const sponsorshipAvailablePatterns = [
+    /(?:visa )?sponsorship.*available/,
+    /(?:will|can) (?:provide|offer|sponsor).*(?:visa|sponsorship)/,
+    /eligible for.*visa sponsorship/,
+    /h-1b.*(?:available|sponsor)/,
+    /work authorization.*(?:provided|available)/,
+  ];
+
+  if (sponsorshipAvailablePatterns.some(pattern => pattern.test(lowerText))) {
+    return 'sponsorship_available';
+  }
+
+  // Explicitly no sponsorship
+  if (usOnlyPatterns.some(pattern => pattern.test(lowerText))) {
+    return 'sponsorship_not_available';
+  }
+
+  return 'unknown';
+}
+
+/**
+ * Extract degree level requirements from job description
+ * Returns: array of ['bachelors', 'masters', 'phd'] or ['any']
+ */
+export function extractDegreeLevel(text) {
+  if (!text) return ['any'];
+
+  const lowerText = text.toLowerCase();
+  const degrees = [];
+
+  // Bachelor's degree patterns
+  if (/bachelor|undergraduate|bsc|b\.s\.|bs degree|4-year degree/i.test(lowerText)) {
+    degrees.push('bachelors');
+  }
+
+  // Master's degree patterns
+  if (/master|msc|m\.s\.|ms degree|graduate degree/i.test(lowerText)) {
+    degrees.push('masters');
+  }
+
+  // PhD patterns
+  if (/phd|ph\.d\.|doctorate|doctoral/i.test(lowerText)) {
+    degrees.push('phd');
+  }
+
+  // If no specific degree mentioned, assume any degree level
+  if (degrees.length === 0) {
+    return ['any'];
+  }
+
+  return degrees;
+}
+
+/**
+ * Extract major/field requirements from job description
+ * Returns: array of majors or ['any']
+ */
+export function extractMajorRequirements(text) {
+  if (!text) return ['any'];
+
+  const lowerText = text.toLowerCase();
+  const majors = [];
+
+  const majorPatterns = [
+    { name: 'Computer Science', patterns: [/computer science/i, /\bcs\b/i, /computing/i] },
+    { name: 'Software Engineering', patterns: [/software engineering/i] },
+    { name: 'Electrical Engineering', patterns: [/electrical engineering/i, /\bee\b/i] },
+    { name: 'Computer Engineering', patterns: [/computer engineering/i, /\bce\b/i] },
+    { name: 'Engineering', patterns: [/engineering/i, /\beng\b/i] },
+    { name: 'Information Systems', patterns: [/information systems/i, /\bis\b/i, /management information systems/i, /\bmis\b/i] },
+    { name: 'Information Technology', patterns: [/information technology/i, /\bit\b/i] },
+    { name: 'Mathematics', patterns: [/mathematics/i, /math/i, /applied math/i] },
+    { name: 'Statistics', patterns: [/statistics/i, /\bstats\b/i] },
+    { name: 'Data Science', patterns: [/data science/i] },
+    { name: 'Physics', patterns: [/physics/i] },
+    { name: 'Business', patterns: [/business/i, /commerce/i, /management/i] },
+    { name: 'Finance', patterns: [/finance/i, /financial/i, /economics/i] },
+    { name: 'Accounting', patterns: [/accounting/i] },
+    { name: 'Marketing', patterns: [/marketing/i] },
+    { name: 'Design', patterns: [/design/i, /graphic design/i, /visual design/i] },
+  ];
+
+  majorPatterns.forEach(({ name, patterns }) => {
+    if (patterns.some(pattern => pattern.test(lowerText))) {
+      majors.push(name);
+    }
+  });
+
+  // If no specific major mentioned, assume any major
+  if (majors.length === 0) {
+    return ['any'];
+  }
+
+  return majors;
+}
+
+/**
  * Main function to extract all eligibility information
- * Returns: { eligible_years: [] }
+ * Returns: {
+ *   eligible_years: [],
+ *   student_status: string,
+ *   visa_requirements: string,
+ *   degree_level: [],
+ *   major_requirements: []
+ * }
  */
 export function extractEligibility(title, description) {
   const combinedText = `${title || ''} ${description || ''}`;
 
   return {
-    eligible_years: extractEligibleYears(combinedText)
+    eligible_years: extractEligibleYears(combinedText),
+    student_status: extractStudentStatus(combinedText),
+    visa_requirements: extractVisaRequirements(combinedText),
+    degree_level: extractDegreeLevel(combinedText),
+    major_requirements: extractMajorRequirements(combinedText),
   };
 }
