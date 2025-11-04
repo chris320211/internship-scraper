@@ -249,6 +249,148 @@ const companyDomains: Record<string, string> = {
   'Verizon': 'verizon.com',
   'AT&T': 'att.com',
   'T-Mobile': 't-mobile.com',
+
+  // Additional Tech Companies
+  'Plaid': 'plaid.com',
+  'Brex': 'brex.com',
+  'Chime': 'chime.com',
+  'Affirm': 'affirm.com',
+  'Gusto': 'gusto.com',
+  'Rippling': 'rippling.com',
+  'Ramp': 'ramp.com',
+  'Anthropic': 'anthropic.com',
+  'OpenAI': 'openai.com',
+  'Cohere': 'cohere.ai',
+  'Hugging Face': 'huggingface.co',
+  'Scale AI': 'scale.com',
+  'DataRobot': 'datarobot.com',
+  'Datadog': 'datadoghq.com',
+  'New Relic': 'newrelic.com',
+  'PagerDuty': 'pagerduty.com',
+  'HashiCorp': 'hashicorp.com',
+  'Vercel': 'vercel.com',
+  'Netlify': 'netlify.com',
+  'Twilio': 'twilio.com',
+  'SendGrid': 'sendgrid.com',
+  'Segment': 'segment.com',
+  'Amplitude': 'amplitude.com',
+  'Mixpanel': 'mixpanel.com',
+  'LaunchDarkly': 'launchdarkly.com',
+  'Cockroach Labs': 'cockroachlabs.com',
+  'CockroachDB': 'cockroachlabs.com',
+  'Elastic': 'elastic.co',
+  'Confluent': 'confluent.io',
+  'Redis': 'redis.io',
+  'Redis Labs': 'redis.com',
+  'Neo4j': 'neo4j.com',
+  'Airtable': 'airtable.com',
+  'Coda': 'coda.io',
+  'Linear': 'linear.app',
+  'Retool': 'retool.com',
+  'Zapier': 'zapier.com',
+  'IFTTT': 'ifttt.com',
+  'Miro': 'miro.com',
+  'Sketch': 'sketch.com',
+  'InVision': 'invisionapp.com',
+  'Abstract': 'abstract.com',
+
+  // Gaming & Entertainment
+  'Riot Games': 'riotgames.com',
+  'Blizzard': 'blizzard.com',
+  'Valve': 'valvesoftware.com',
+  'Nintendo': 'nintendo.com',
+  'Sony': 'sony.com',
+  'PlayStation': 'playstation.com',
+  'Xbox': 'xbox.com',
+
+  // E-commerce & Retail
+  'eBay': 'ebay.com',
+  'Alibaba': 'alibaba.com',
+  'Mercari': 'mercari.com',
+  'Poshmark': 'poshmark.com',
+  'Gopuff': 'gopuff.com',
+  'Postmates': 'postmates.com',
+  'Grubhub': 'grubhub.com',
+  'Deliveroo': 'deliveroo.com',
+
+  // Travel & Hospitality
+  'Booking.com': 'booking.com',
+  'Expedia': 'expedia.com',
+  'TripAdvisor': 'tripadvisor.com',
+  'Hopper': 'hopper.com',
+
+  // Health Tech
+  'Oscar Health': 'hioscar.com',
+  'Ro': 'ro.co',
+  'Hims': 'forhims.com',
+  'Calm': 'calm.com',
+  'Headspace': 'headspace.com',
+  '23andMe': '23andme.com',
+  'Tempus': 'tempus.com',
+  'Color': 'color.com',
+
+  // Education
+  'Coursera': 'coursera.org',
+  'Udacity': 'udacity.com',
+  'edX': 'edx.org',
+  'Khan Academy': 'khanacademy.org',
+  'Duolingo': 'duolingo.com',
+  'Quizlet': 'quizlet.com',
+  'Chegg': 'chegg.com',
+
+  // Cybersecurity
+  'CrowdStrike': 'crowdstrike.com',
+  'Palo Alto Networks': 'paloaltonetworks.com',
+  'Okta': 'okta.com',
+  'Auth0': 'auth0.com',
+  'Snyk': 'snyk.io',
+  '1Password': '1password.com',
+  'LastPass': 'lastpass.com',
+  'Duo Security': 'duo.com',
+  'Tanium': 'tanium.com',
+
+  // More Startups
+  'Flexport': 'flexport.com',
+  'Convoy': 'convoy.com',
+  'Faire': 'faire.com',
+  'Coupang': 'coupang.com',
+  'Grab': 'grab.com',
+  'GoJek': 'gojek.com',
+  'Nubank': 'nubank.com.br',
+  'Klarna': 'klarna.com',
+  'SoFi': 'sofi.com',
+  'Wealthfront': 'wealthfront.com',
+  'Betterment': 'betterment.com',
+
+  // Real Estate & PropTech
+  'Zillow': 'zillow.com',
+  'Redfin': 'redfin.com',
+  'Compass': 'compass.com',
+  'OpenDoor': 'opendoor.com',
+  'Offerpad': 'offerpad.com',
+
+  // HR Tech
+  'Greenhouse': 'greenhouse.io',
+  'Lever': 'lever.co',
+  'Ashby': 'ashbyhq.com',
+  'BambooHR': 'bamboohr.com',
+  'Lattice': 'lattice.com',
+  'Culture Amp': 'cultureamp.com',
+  '15Five': '15five.com',
+
+  // Media & Communication
+  'Medium': 'medium.com',
+  'Substack': 'substack.com',
+  'Patreon': 'patreon.com',
+  'OnlyFans': 'onlyfans.com',
+  'Clubhouse': 'clubhouse.com',
+
+  // Cloud & Infrastructure
+  'DigitalOcean': 'digitalocean.com',
+  'Linode': 'linode.com',
+  'Vultr': 'vultr.com',
+  'Fastly': 'fastly.com',
+  'Akamai': 'akamai.com',
 };
 
 // Helper function to get company domain
@@ -279,6 +421,34 @@ function getCompanyDomain(companyName: string): string | null {
   return partialMatch ? companyDomains[partialMatch] : null;
 }
 
+// Helper function to guess domain from company name
+function guessDomainFromName(companyName: string): string | null {
+  if (!companyName) return null;
+
+  // Clean up the name
+  let cleanName = companyName
+    .toLowerCase()
+    .trim()
+    // Remove common suffixes
+    .replace(/\s+(inc\.?|llc\.?|corp\.?|corporation|limited|ltd\.?|company|co\.?)$/i, '')
+    // Remove special characters but keep spaces temporarily
+    .replace(/[^a-z0-9\s&-]/g, '')
+    .trim();
+
+  // Handle special cases
+  if (cleanName.includes('&')) {
+    cleanName = cleanName.replace(/\s*&\s*/g, '');
+  }
+
+  // Remove spaces and hyphens for domain
+  cleanName = cleanName.replace(/[\s-]/g, '');
+
+  // If name is too short, might not be valid
+  if (cleanName.length < 3) return null;
+
+  return `${cleanName}.com`;
+}
+
 // Helper function to get company logo with multiple fallback strategies
 export const getCompanyLogo = (companyName: string): string | null => {
   if (!companyName) return null;
@@ -292,14 +462,20 @@ export const getCompanyLogo = (companyName: string): string | null => {
     return companyLogos[exactMatch];
   }
 
-  // Strategy 2: Use Logo.dev API with company domain (free, reliable, no CORS issues)
+  // Strategy 2: Use Clearbit Logo API with company domain (free, no API key, high quality)
   const domain = getCompanyDomain(companyName);
   if (domain) {
-    // Logo.dev supports multiple formats and sizes
-    // Using ?size=200 for good quality, ?format=png for compatibility
-    return `https://img.logo.dev/${domain}?token=pk_X-kZlKUJQGuwckV6twNvNQ&size=200`;
+    // Clearbit automatically falls back to high-quality favicon if logo not found
+    // Size parameter ensures good quality
+    return `https://logo.clearbit.com/${domain}?size=200`;
   }
 
-  // Strategy 3: Return null to show initials fallback in component
+  // Strategy 3: Try to guess the domain from the company name
+  const guessedDomain = guessDomainFromName(companyName);
+  if (guessedDomain) {
+    return `https://logo.clearbit.com/${guessedDomain}?size=200`;
+  }
+
+  // Strategy 4: Return null to show initials fallback in component
   return null;
 };
