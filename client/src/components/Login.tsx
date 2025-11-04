@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { LogIn, Sparkles } from 'lucide-react';
 
 interface LoginProps {
-  onLogin: (userId: number, email: string) => void;
+  onLogin: (userId: number, email: string, hasCompletedOnboarding?: boolean) => void;
   onSwitchToSignup: () => void;
 }
 
@@ -41,7 +41,7 @@ function Login({ onLogin, onSwitchToSignup }: LoginProps) {
       }
 
       const data = await response.json();
-      onLogin(data.user.id, data.user.email);
+      onLogin(data.user.id, data.user.email, data.user.hasCompletedOnboarding);
     } catch (err) {
       if (err instanceof TypeError && err.message.includes('fetch')) {
         setError('Unable to connect to server. Please make sure the backend is running on port 3001.');

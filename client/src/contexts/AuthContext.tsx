@@ -3,13 +3,14 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 interface User {
   id: number;
   email: string;
+  hasCompletedOnboarding?: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   hasCompletedOnboarding: boolean;
-  login: (userId: number, email: string) => void;
+  login: (userId: number, email: string, hasCompletedOnboarding?: boolean) => void;
   logout: () => void;
   completeOnboarding: () => void;
 }
@@ -23,20 +24,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Load user from localStorage on mount
     const savedUser = localStorage.getItem('user');
-    const onboardingComplete = localStorage.getItem('onboardingComplete');
 
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-
-    if (onboardingComplete === 'true') {
-      setHasCompletedOnboarding(true);
+      const parsedUser = JSON.parse(savedUser);
+      setUser(parsedUser);
+      // Set onboarding status from user object
+      if (parsedUser.hasCompletedOnboarding !== undefined) {
+        setHasCompletedOnboarding(parsedUser.hasCompletedOnboarding);
+      }
     }
   }, []);
 
-  const login = (userId: number, email: string) => {
-    const newUser = { id: userId, email };
+  const login = (userId: number, email: string, hasCompletedOnboarding = false) => {
+    const newUser = { id: userId, email, hasCompletedOnboarding };
     setUser(newUser);
+    setHasCompletedOnboarding(hasCompletedOnboarding);
     localStorage.setItem('user', JSON.stringify(newUser));
   };
 
@@ -44,12 +46,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setHasCompletedOnboarding(false);
     localStorage.removeItem('user');
-    localStorage.removeItem('onboardingComplete');
   };
 
   const completeOnboarding = () => {
     setHasCompletedOnboarding(true);
-    localStorage.setItem('onboardingComplete', 'true');
+    // Update user object in localStorage with onboarding status
+    if (user) {
+      const updatedUser = { ...user, hasCompletedOnboarding: true };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+    }
   };
 
   return (

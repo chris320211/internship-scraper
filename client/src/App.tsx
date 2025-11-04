@@ -12,12 +12,13 @@ function AppContent() {
   const { user, isAuthenticated, hasCompletedOnboarding, login, completeOnboarding } = useAuth();
   const [authView, setAuthView] = useState<AuthView>('landing');
 
-  const handleLogin = (userId: number, email: string) => {
-    login(userId, email);
+  const handleLogin = (userId: number, email: string, hasCompletedOnboarding?: boolean) => {
+    login(userId, email, hasCompletedOnboarding);
   };
 
   const handleSignup = (userId: number, email: string) => {
-    login(userId, email);
+    // New signups haven't completed onboarding yet
+    login(userId, email, false);
   };
 
   const handleOnboardingComplete = () => {

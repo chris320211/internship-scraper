@@ -52,10 +52,19 @@ export async function login(email, password) {
       throw new Error('Invalid credentials');
     }
 
+    // Check if user has completed onboarding (has a profile)
+    const profileResult = await pool.query(
+      'SELECT id FROM user_profiles WHERE user_id = $1',
+      [user.id]
+    );
+
+    const hasCompletedOnboarding = profileResult.rows.length > 0;
+
     // Return user without password hash
     return {
       id: user.id,
       email: user.email,
+      hasCompletedOnboarding,
     };
   } catch (error) {
     console.error('Error in login:', error);
