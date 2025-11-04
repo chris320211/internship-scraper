@@ -1,4 +1,5 @@
 import { categorizeJobType } from './jobTypeClassifier.js';
+import { extractEligibility } from './eligibilityExtractor.js';
 
 /**
  * SmartRecruiters API Integration
@@ -84,14 +85,21 @@ function transformJob(job, companyName) {
     ? 'Remote'
     : 'Remote';
 
+  const description = job.postingDescription || 'No description available';
+  const eligibility = extractEligibility(job.name, description);
+
   return {
     id: `smartrecruiters-${companyName.toLowerCase()}-${job.id}`,
     company_name: companyName,
     position_title: job.name,
-    description: job.postingDescription || 'No description available',
+    description: description,
     job_type: categorizeJobType(job.name, job.postingDescription),
     location: location,
-    eligible_years: determineEligibleYears(job),
+    eligible_years: eligibility.eligible_years,
+    student_status: eligibility.student_status,
+    visa_requirements: eligibility.visa_requirements,
+    degree_level: eligibility.degree_level,
+    major_requirements: eligibility.major_requirements,
     posted_date: job.releasedDate ? new Date(job.releasedDate).toISOString() : new Date().toISOString(),
     application_deadline: null,
     application_url: job.ref || `https://jobs.smartrecruiters.com/${companyName}/${job.id}`,

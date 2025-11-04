@@ -8,6 +8,10 @@ CREATE TABLE IF NOT EXISTS internships (
     job_type TEXT NOT NULL,
     location TEXT NOT NULL,
     eligible_years TEXT[] DEFAULT '{}',
+    student_status TEXT DEFAULT 'any', -- 'student', 'new_grad', 'experienced', 'any'
+    visa_requirements TEXT DEFAULT 'unknown', -- 'us_only', 'sponsorship_available', 'sponsorship_not_available', 'unknown'
+    degree_level TEXT[] DEFAULT '{any}', -- Array: 'bachelors', 'masters', 'phd', 'any'
+    major_requirements TEXT[] DEFAULT '{any}', -- Array of majors or 'any'
     posted_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     application_deadline TIMESTAMP WITH TIME ZONE,
     application_url TEXT,
@@ -171,3 +175,43 @@ CREATE TRIGGER update_internships_updated_at
     BEFORE UPDATE ON internships
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+
+-- Migration: Add new eligibility columns if they don't exist
+DO $$
+BEGIN
+    -- Add student_status column
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'internships' AND column_name = 'student_status'
+    ) THEN
+        ALTER TABLE internships ADD COLUMN student_status TEXT DEFAULT 'any';
+    END IF;
+
+    -- Add visa_requirements column
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'internships' AND column_name = 'visa_requirements'
+    ) THEN
+        ALTER TABLE internships ADD COLUMN visa_requirements TEXT DEFAULT 'unknown';
+    END IF;
+
+    -- Add degree_level column
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'internships' AND column_name = 'degree_level'
+    ) THEN
+        ALTER TABLE internships ADD COLUMN degree_level TEXT[] DEFAULT '{any}';
+    END IF;
+
+    -- Add major_requirements column
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'internships' AND column_name = 'major_requirements'
+    ) THEN
+        ALTER TABLE internships ADD COLUMN major_requirements TEXT[] DEFAULT '{any}';
+    END IF;
+END$$;
+
+-- Create indexes for new columns
+CREATE INDEX IF NOT EXISTS idx_internships_student_status ON internships(student_status);
+CREATE INDEX IF NOT EXISTS idx_internships_visa_requirements ON internships(visa_requirements);

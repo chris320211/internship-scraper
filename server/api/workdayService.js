@@ -1,4 +1,5 @@
 import { categorizeJobType } from './jobTypeClassifier.js';
+import { extractEligibility } from './eligibilityExtractor.js';
 
 /**
  * Workday Job Board API Integration
@@ -95,15 +96,21 @@ function determineEligibleYears(job) {
 function transformJob(job, companyName, org, tenant, subdomain) {
   const location = job.locationsText || 'Remote';
   const jobUrl = `https://${subdomain}.myworkdaysite.com/${org}/${tenant}/job/${job.bulletFields?.[0] || job.title}/${job.externalPath}`;
+  const description = job.bulletFields?.join(' • ') || 'No description available';
+  const eligibility = extractEligibility(job.title, description);
 
   return {
     id: `workday-${companyName.toLowerCase()}-${job.externalPath}`,
     company_name: companyName,
     position_title: job.title,
-    description: job.bulletFields?.join(' • ') || 'No description available',
+    description: description,
     job_type: categorizeJobType(job.title, job.bulletFields?.join(' ')),
     location: location,
-    eligible_years: determineEligibleYears(job),
+    eligible_years: eligibility.eligible_years,
+    student_status: eligibility.student_status,
+    visa_requirements: eligibility.visa_requirements,
+    degree_level: eligibility.degree_level,
+    major_requirements: eligibility.major_requirements,
     posted_date: job.postedOn ? new Date(job.postedOn).toISOString() : new Date().toISOString(),
     application_deadline: null,
     application_url: jobUrl,

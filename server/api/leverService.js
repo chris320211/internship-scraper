@@ -1,4 +1,5 @@
 import { categorizeJobType } from './jobTypeClassifier.js';
+import { extractEligibility } from './eligibilityExtractor.js';
 
 /**
  * Lever Job Board API Integration
@@ -97,6 +98,7 @@ function cleanDescription(html) {
  */
 function transformJob(job, companyName) {
   const location = job.categories?.location || job.workplaceType || 'Remote';
+  const eligibility = extractEligibility(job.text, job.description);
 
   return {
     id: `lever-${companyName.toLowerCase()}-${job.id}`,
@@ -105,7 +107,11 @@ function transformJob(job, companyName) {
     description: cleanDescription(job.description),
     job_type: categorizeJobType(job.text, job.description),
     location: location,
-    eligible_years: determineEligibleYears(job),
+    eligible_years: eligibility.eligible_years,
+    student_status: eligibility.student_status,
+    visa_requirements: eligibility.visa_requirements,
+    degree_level: eligibility.degree_level,
+    major_requirements: eligibility.major_requirements,
     posted_date: job.createdAt ? new Date(job.createdAt).toISOString() : new Date().toISOString(),
     application_deadline: null,
     application_url: job.hostedUrl || job.applyUrl,
