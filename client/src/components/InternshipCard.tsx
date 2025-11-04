@@ -1,4 +1,4 @@
-import { MapPin, Calendar, DollarSign, Clock, Bookmark, ExternalLink, CheckCircle, Building2, GraduationCap } from 'lucide-react';
+import { MapPin, Calendar, DollarSign, Clock, Bookmark, ExternalLink, CheckCircle, GraduationCap } from 'lucide-react';
 import React, { useState } from 'react';
 import { Internship } from '../lib/mockData';
 import { getCompanyLogo } from '../lib/companyLogos';
@@ -11,6 +11,7 @@ interface InternshipCardProps {
 
 export default function InternshipCard({ internship, isSaved, onToggleSave }: InternshipCardProps) {
   const [logoError, setLogoError] = useState(false);
+  const [logoLoading, setLogoLoading] = useState(true);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'No deadline';
@@ -41,6 +42,18 @@ export default function InternshipCard({ internship, isSaved, onToggleSave }: In
 
   const companyInitials = getCompanyInitials(companyName);
 
+  // Handle logo load success
+  const handleLogoLoad = () => {
+    setLogoLoading(false);
+    setLogoError(false);
+  };
+
+  // Handle logo load error
+  const handleLogoError = () => {
+    setLogoLoading(false);
+    setLogoError(true);
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all p-6 border border-slate-200 hover:border-blue-300">
       <div className="flex justify-between items-start mb-4">
@@ -48,13 +61,21 @@ export default function InternshipCard({ internship, isSaved, onToggleSave }: In
           <div className="flex items-start gap-3 mb-2">
             <div className="bg-white rounded-lg p-2 flex items-center justify-center shadow-md border border-slate-200 w-16 h-16 flex-shrink-0">
               {companyLogo && !logoError ? (
-                <img
-                  src={companyLogo}
-                  alt={`${companyName} logo`}
-                  className="w-full h-full object-contain"
-                  onError={() => setLogoError(true)}
-                  loading="lazy"
-                />
+                <>
+                  {logoLoading && (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="animate-pulse bg-slate-200 rounded w-full h-full"></div>
+                    </div>
+                  )}
+                  <img
+                    src={companyLogo}
+                    alt={`${companyName} logo`}
+                    className={`w-full h-full object-contain ${logoLoading ? 'hidden' : 'block'}`}
+                    onLoad={handleLogoLoad}
+                    onError={handleLogoError}
+                    loading="lazy"
+                  />
+                </>
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-600 rounded text-white font-bold text-lg">
                   {companyInitials}
