@@ -225,38 +225,51 @@ curl http://localhost:3002/api/scrape/sources
 
 ```
 internship-scraper/
-├── server/                       # Backend API (Node.js)
-│   ├── index.js                  # Express server
-│   ├── greenhouseService.js      # Greenhouse API integration
-│   ├── leverService.js           # Lever API integration
-│   ├── ashbyService.js           # Ashby API integration
-│   ├── workdayService.js         # Workday API integration
-│   ├── smartRecruitersService.js # SmartRecruiters API integration
-│   ├── scraperJob.js             # Job scheduling and scraping orchestration
-│   ├── database.js               # PostgreSQL database operations
-│   ├── companies.js              # List of company board tokens for all platforms
-│   ├── package.json
-│   └── Dockerfile
-├── scraper-service/              # Web scraper service (Python)
-│   ├── app.py                    # Flask server
-│   ├── scrapers.py               # Scrapling-based scrapers
-│   ├── requirements.txt          # Python dependencies
-│   └── Dockerfile
-├── src/                          # Frontend (React)
-│   ├── components/
-│   │   ├── InternshipCard.tsx    # Individual internship display
-│   │   ├── PromptSetup.tsx       # Initial search setup screen
-│   │   └── SearchFilters.tsx     # Filter controls
-│   ├── lib/
-│   │   ├── api.ts                # Backend API client
-│   │   ├── mockData.ts           # TypeScript types
-│   │   └── localStorage.ts       # Browser storage utilities
-│   ├── App.tsx                   # Main application component
-│   └── main.tsx                  # Application entry point
-├── Dockerfile                    # Frontend Docker build
+├── client/                       # Frontend application
+│   ├── src/                      # React source files
+│   │   ├── components/
+│   │   │   ├── InternshipCard.tsx    # Individual internship display
+│   │   │   ├── PromptSetup.tsx       # Initial search setup screen
+│   │   │   └── SearchFilters.tsx     # Filter controls
+│   │   ├── lib/
+│   │   │   ├── api.ts                # Backend API client
+│   │   │   ├── mockData.ts           # TypeScript types
+│   │   │   └── localStorage.ts       # Browser storage utilities
+│   │   ├── App.tsx                   # Main application component
+│   │   └── main.tsx                  # Application entry point
+│   ├── public/                   # Static assets
+│   ├── index.html                # HTML entry point
+│   ├── vite.config.ts            # Vite configuration
+│   ├── tailwind.config.js        # Tailwind CSS configuration
+│   ├── package.json              # Frontend dependencies
+│   └── tsconfig.json             # TypeScript configuration
+├── server/                       # Backend services
+│   ├── api/                      # Express API server (Node.js)
+│   │   ├── index.js              # Express server
+│   │   ├── greenhouseService.js  # Greenhouse API integration
+│   │   ├── leverService.js       # Lever API integration
+│   │   ├── ashbyService.js       # Ashby API integration
+│   │   ├── workdayService.js     # Workday API integration
+│   │   ├── smartRecruitersService.js # SmartRecruiters API integration
+│   │   ├── scraperJob.js         # Job scheduling and scraping orchestration
+│   │   ├── database.js           # PostgreSQL database operations
+│   │   ├── companies.js          # List of company board tokens
+│   │   ├── package.json          # Backend dependencies
+│   │   └── Dockerfile            # Backend Docker build
+│   ├── scraper-service/          # Web scraper service (Python)
+│   │   ├── app.py                # Flask server
+│   │   ├── scrapers.py           # Scrapling-based scrapers
+│   │   ├── requirements.txt      # Python dependencies
+│   │   └── Dockerfile            # Scraper Docker build
+│   ├── database/                 # Database schemas and migrations
+│   │   └── schema.sql            # PostgreSQL schema
+│   ├── docker/                   # Docker configurations
+│   │   ├── Dockerfile            # Frontend Docker build
+│   │   └── nginx.conf            # Nginx configuration
+│   └── tests/                    # Backend test files
 ├── docker-compose.yml            # Multi-container orchestration
-├── nginx.conf                    # Nginx configuration
-└── README.md
+├── .env                          # Environment variables
+└── README.md                     # Project documentation
 ```
 
 ## Data Sources
@@ -298,7 +311,7 @@ The backend scrapes internship postings from 20 companies using Greenhouse:
 - Twitch, DoorDash, Lyft, Snap, Discord
 - Shopify, Atlassian, GitLab, Cloudflare, Asana
 
-To add more companies, edit [server/companies.js](server/companies.js) with their Greenhouse board token.
+To add more companies, edit [server/api/companies.js](server/api/companies.js) with their Greenhouse board token.
 
 ### Lever Job Boards
 
