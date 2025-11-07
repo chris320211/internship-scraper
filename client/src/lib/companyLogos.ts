@@ -58,16 +58,11 @@ export const companyLogos: Record<string, string> = {
   'Visa': '/company-logos/visa.svg',
   'Mastercard': '/company-logos/mastercard.svg',
   'PayPal': '/company-logos/paypal.svg',
-  'Goldman Sachs': '/company-logos/goldman-sachs.svg',
-  'JPMorgan': '/company-logos/jpmorgan.svg',
-  'JPMorgan Chase': '/company-logos/jpmorgan.svg',
-  'Chase': '/company-logos/jpmorgan.svg',
-  'Morgan Stanley': '/company-logos/morgan-stanley.svg',
   'Point72': '/company-logos/point72.svg',
+  // Removed broken logos: Goldman Sachs, JPMorgan, Morgan Stanley - will use Clearbit API
 
   // Consulting
-  'Deloitte': '/company-logos/deloitte.svg',
-  'Accenture': '/company-logos/accenture.svg',
+  // Removed broken logos: Deloitte, Accenture - will use Clearbit API
 
   // Transportation & Delivery
   'Uber': '/company-logos/uber.svg',
@@ -92,10 +87,9 @@ export const companyLogos: Record<string, string> = {
   'Etsy': '/company-logos/etsy.svg',
 
   // Software & Tools
-  'Autodesk': '/company-logos/autodesk.svg',
-  'Intuit': '/company-logos/intuit.svg',
   'HubSpot': '/company-logos/hubspot.svg',
   'Canva': '/company-logos/canva.svg',
+  // Removed broken logos: Autodesk, Intuit - will use Clearbit API
 
   // Telecom
   'Verizon': '/company-logos/verizon.svg',
@@ -453,29 +447,39 @@ function guessDomainFromName(companyName: string): string | null {
 export const getCompanyLogo = (companyName: string): string | null => {
   if (!companyName) return null;
 
-  // Strategy 1: Check local logos first (most reliable)
-  const normalized = companyName.trim();
-  const exactMatch = Object.keys(companyLogos).find(
-    key => key.toLowerCase() === normalized.toLowerCase()
-  );
-  if (exactMatch) {
-    return companyLogos[exactMatch];
-  }
-
-  // Strategy 2: Use Clearbit Logo API with company domain (free, no API key, high quality)
+  // Strategy 1: Use Brandfetch CDN - direct access, no API key needed, most reliable
   const domain = getCompanyDomain(companyName);
   if (domain) {
-    // Clearbit automatically falls back to high-quality favicon if logo not found
-    // Size parameter ensures good quality
-    return `https://logo.clearbit.com/${domain}?size=200`;
+    // Brandfetch CDN - serves logos directly from their CDN
+    return `https://cdn.brandfetch.io/${domain}?c=1idalcQyn-8DLRJFuTP`;
   }
 
-  // Strategy 3: Try to guess the domain from the company name
+  // Strategy 2: Try to guess the domain from the company name
   const guessedDomain = guessDomainFromName(companyName);
   if (guessedDomain) {
-    return `https://logo.clearbit.com/${guessedDomain}?size=200`;
+    return `https://cdn.brandfetch.io/${guessedDomain}?c=1idalcQyn-8DLRJFuTP`;
   }
 
-  // Strategy 4: Return null to show initials fallback in component
+  // Strategy 3: Return null to show initials fallback in component
+  return null;
+};
+
+// Helper to get fallback logo (using Clearbit)
+export const getFallbackLogo = (companyName: string): string | null => {
+  const domain = getCompanyDomain(companyName) || guessDomainFromName(companyName);
+  if (domain) {
+    // Try Clearbit as first fallback
+    return `https://logo.clearbit.com/${domain}`;
+  }
+  return null;
+};
+
+// Helper to get final fallback logo (Google favicon)
+export const getFinalFallbackLogo = (companyName: string): string | null => {
+  const domain = getCompanyDomain(companyName) || guessDomainFromName(companyName);
+  if (domain) {
+    // Google's favicon service as ultimate fallback - always works
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=256`;
+  }
   return null;
 };

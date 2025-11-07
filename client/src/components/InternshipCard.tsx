@@ -1,7 +1,7 @@
 import { MapPin, Calendar, DollarSign, Clock, Bookmark, ExternalLink, CheckCircle, GraduationCap } from 'lucide-react';
 import React, { useState } from 'react';
 import { Internship } from '../lib/mockData';
-import { getCompanyLogo } from '../lib/companyLogos';
+import { getCompanyLogo, getFallbackLogo, getFinalFallbackLogo } from '../lib/companyLogos';
 
 interface InternshipCardProps {
   internship: Internship;
@@ -10,8 +10,11 @@ interface InternshipCardProps {
 }
 
 export default function InternshipCard({ internship, isSaved, onToggleSave }: InternshipCardProps) {
+  const companyName = internship.company_name || 'Unknown Company';
+  const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(getCompanyLogo(companyName));
   const [logoError, setLogoError] = useState(false);
-  const [logoLoading, setLogoLoading] = useState(true);
+  const [logoLoading, setLogoLoading] = useState(!!currentLogoUrl);
+  const [fallbackAttempts, setFallbackAttempts] = useState(0);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'No deadline';
@@ -26,9 +29,6 @@ export default function InternshipCard({ internship, isSaved, onToggleSave }: In
     const daysUntil = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     return daysUntil <= 7 && daysUntil >= 0;
   };
-
-  const companyName = internship.company_name || 'Unknown Company';
-  const companyLogo = getCompanyLogo(companyName);
 
   // Get company initials for fallback
   const getCompanyInitials = (name: string) => {
@@ -48,9 +48,32 @@ export default function InternshipCard({ internship, isSaved, onToggleSave }: In
     setLogoError(false);
   };
 
-  // Handle logo load error
+  // Handle logo load error - try multiple fallbacks
   const handleLogoError = () => {
     setLogoLoading(false);
+    setFallbackAttempts(prev => prev + 1);
+
+    // Try Clearbit fallback if we're on Brandfetch CDN (first attempt)
+    if (fallbackAttempts === 0 && currentLogoUrl && currentLogoUrl.includes('brandfetch.io')) {
+      const fallback = getFallbackLogo(companyName);
+      if (fallback) {
+        setCurrentLogoUrl(fallback);
+        setLogoLoading(true);
+        return;
+      }
+    }
+
+    // Try Google favicon if we're on Clearbit (second attempt)
+    if (fallbackAttempts === 1 && currentLogoUrl && currentLogoUrl.includes('clearbit.com')) {
+      const finalFallback = getFinalFallbackLogo(companyName);
+      if (finalFallback) {
+        setCurrentLogoUrl(finalFallback);
+        setLogoLoading(true);
+        return;
+      }
+    }
+
+    // All fallbacks exhausted, show initials
     setLogoError(true);
   };
 
@@ -60,7 +83,7 @@ export default function InternshipCard({ internship, isSaved, onToggleSave }: In
         <div className="flex-1">
           <div className="flex items-start gap-3 mb-2">
             <div className="bg-white rounded-lg p-2 flex items-center justify-center shadow-md border border-slate-200 w-16 h-16 flex-shrink-0">
-              {companyLogo && !logoError ? (
+              {currentLogoUrl && !logoError ? (
                 <>
                   {logoLoading && (
                     <div className="w-full h-full flex items-center justify-center">
@@ -68,7 +91,7 @@ export default function InternshipCard({ internship, isSaved, onToggleSave }: In
                     </div>
                   )}
                   <img
-                    src={companyLogo}
+                    src={currentLogoUrl}
                     alt={`${companyName} logo`}
                     className={`w-full h-full object-contain ${logoLoading ? 'hidden' : 'block'}`}
                     onLoad={handleLogoLoad}
