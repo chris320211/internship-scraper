@@ -41,7 +41,7 @@ export default function SearchFilters({
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search by company, position, or keyword..."
+            placeholder="Search company, role, location, skills, or any keyword..."
             className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-900 placeholder-slate-400"
           />
         </div>

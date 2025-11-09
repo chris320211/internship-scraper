@@ -159,13 +159,27 @@ function InternshipSearch() {
     let filtered = [...internships];
 
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (internship) =>
-          internship.company_name.toLowerCase().includes(query) ||
-          internship.position_title.toLowerCase().includes(query) ||
-          internship.job_type.toLowerCase().includes(query)
-      );
+      const query = searchQuery.toLowerCase().trim();
+      const queryWords = query.split(/\s+/).filter(word => word.length > 0);
+
+      filtered = filtered.filter((internship) => {
+        // Create searchable text from all relevant fields
+        const searchableText = [
+          internship.company_name,
+          internship.position_title,
+          internship.job_type,
+          internship.location,
+          ...(internship.requirements || []),
+          ...(internship.eligible_years || []),
+          ...(internship.graduation_years || []),
+          internship.pay_range || '',
+          internship.duration || '',
+        ].join(' ').toLowerCase();
+
+        // Match if ANY query word is found anywhere in the searchable text
+        // This makes search very lenient - partial matches work
+        return queryWords.some(word => searchableText.includes(word));
+      });
     }
 
     if (selectedJobTypes.length > 0) {
