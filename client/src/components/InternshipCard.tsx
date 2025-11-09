@@ -12,8 +12,7 @@ interface InternshipCardProps {
 export default function InternshipCard({ internship, isSaved, onToggleSave }: InternshipCardProps) {
   const companyName = internship.company_name || 'Unknown Company';
   const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(getCompanyLogo(companyName));
-  const [logoError, setLogoError] = useState(false);
-  const [logoLoading, setLogoLoading] = useState(!!currentLogoUrl);
+  const [logoLoaded, setLogoLoaded] = useState(false);
   const [fallbackAttempts, setFallbackAttempts] = useState(0);
 
   const formatDate = (dateString: string | null) => {
@@ -44,37 +43,35 @@ export default function InternshipCard({ internship, isSaved, onToggleSave }: In
 
   // Handle logo load success
   const handleLogoLoad = () => {
-    setLogoLoading(false);
-    setLogoError(false);
+    setLogoLoaded(true);
   };
 
   // Handle logo load error - try multiple fallbacks
   const handleLogoError = () => {
-    setLogoLoading(false);
     setFallbackAttempts(prev => prev + 1);
 
-    // Try Clearbit fallback if we're on Brandfetch CDN (first attempt)
-    if (fallbackAttempts === 0 && currentLogoUrl && currentLogoUrl.includes('brandfetch.io')) {
+    // Try Brandfetch fallback if we're on Clearbit (first attempt)
+    if (fallbackAttempts === 0 && currentLogoUrl && !currentLogoUrl.includes('fallback=')) {
       const fallback = getFallbackLogo(companyName);
       if (fallback) {
         setCurrentLogoUrl(fallback);
-        setLogoLoading(true);
+        setLogoLoaded(false);
         return;
       }
     }
 
-    // Try Google favicon if we're on Clearbit (second attempt)
-    if (fallbackAttempts === 1 && currentLogoUrl && currentLogoUrl.includes('clearbit.com')) {
+    // Try Google favicon if we're on Brandfetch (second attempt)
+    if (fallbackAttempts === 1 && currentLogoUrl && currentLogoUrl.includes('fallback=brandfetch')) {
       const finalFallback = getFinalFallbackLogo(companyName);
       if (finalFallback) {
         setCurrentLogoUrl(finalFallback);
-        setLogoLoading(true);
+        setLogoLoaded(false);
         return;
       }
     }
 
-    // All fallbacks exhausted, show initials
-    setLogoError(true);
+    // All fallbacks exhausted, keep showing initials
+    setLogoLoaded(false);
   };
 
   return (
@@ -82,27 +79,21 @@ export default function InternshipCard({ internship, isSaved, onToggleSave }: In
       <div className="flex justify-between items-start mb-4">
         <div className="flex-1">
           <div className="flex items-start gap-3 mb-2">
-            <div className="bg-white rounded-lg p-2 flex items-center justify-center shadow-md border border-slate-200 w-16 h-16 flex-shrink-0">
-              {currentLogoUrl && !logoError ? (
-                <>
-                  {logoLoading && (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <div className="animate-pulse bg-slate-200 rounded w-full h-full"></div>
-                    </div>
-                  )}
-                  <img
-                    src={currentLogoUrl}
-                    alt={`${companyName} logo`}
-                    className={`w-full h-full object-contain ${logoLoading ? 'hidden' : 'block'}`}
-                    onLoad={handleLogoLoad}
-                    onError={handleLogoError}
-                    loading="lazy"
-                  />
-                </>
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-600 rounded text-white font-bold text-lg">
-                  {companyInitials}
-                </div>
+            <div className="bg-white rounded-lg p-2 flex items-center justify-center shadow-md border border-slate-200 w-16 h-16 flex-shrink-0 relative">
+              {/* Always show initials as background/fallback */}
+              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-600 rounded text-white font-bold text-lg">
+                {companyInitials}
+              </div>
+
+              {/* Logo overlays on top when loaded */}
+              {currentLogoUrl && (
+                <img
+                  src={currentLogoUrl}
+                  alt={`${companyName} logo`}
+                  className={`w-full h-full object-contain relative z-10 bg-white rounded transition-opacity duration-300 ${logoLoaded ? 'opacity-100' : 'opacity-0'}`}
+                  onLoad={handleLogoLoad}
+                  onError={handleLogoError}
+                />
               )}
             </div>
             <div>

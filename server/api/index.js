@@ -1,11 +1,15 @@
 import express from 'express';
 import cors from 'cors';
+import NodeCache from 'node-cache';
 import { getInternships, getDatabaseStats, getScrapingStats, databaseReady, getSavedInternships, saveInternship, unsaveInternship } from './database.js';
 import { setupScraperJobs, runInitialScrape, runAllScrapers } from './scraperJob.js';
 import { signup, login, createUserProfile, updateUserProfile, getUserProfile } from './authService.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Initialize logo cache with 7 day TTL
+const logoCache = new NodeCache({ stdTTL: 604800, checkperiod: 86400 });
 
 // Middleware
 app.use(cors());
@@ -219,6 +223,93 @@ app.get('/api/profile/:userId', async (req, res) => {
   }
 });
 
+// Helper function to fetch logo with caching
+async function fetchLogoWithCache(domain, fallback) {
+  const cacheKey = `${domain}-${fallback || 'default'}`;
+
+  // Check cache first
+  const cached = logoCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  let logoUrl;
+
+  // Try different logo services based on fallback level
+  if (fallback === 'brandfetch') {
+    logoUrl = `https://cdn.brandfetch.io/${domain}?c=1idalcQyn-8DLRJFuTP`;
+  } else if (fallback === 'google') {
+    logoUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=256`;
+  } else {
+    // Default to Clearbit
+    logoUrl = `https://logo.clearbit.com/${domain}`;
+  }
+
+  // Create AbortController for timeout
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    const response = await fetch(logoUrl, { signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      throw new Error(`Logo fetch failed with status ${response.status}`);
+    }
+
+    const imageBuffer = await response.arrayBuffer();
+    const contentType = response.headers.get('content-type') || 'image/png';
+
+    const result = {
+      buffer: Buffer.from(imageBuffer),
+      contentType,
+    };
+
+    // Cache the successful result
+    logoCache.set(cacheKey, result);
+
+    return result;
+  } catch (error) {
+    clearTimeout(timeout);
+    throw error;
+  }
+}
+
+// Company logo proxy endpoint with in-memory caching
+app.get('/api/logo/:domain', async (req, res) => {
+  try {
+    const { domain } = req.params;
+    const { fallback } = req.query;
+
+    if (!domain) {
+      return res.status(400).json({ error: 'Domain is required' });
+    }
+
+    try {
+      const { buffer, contentType } = await fetchLogoWithCache(domain, fallback);
+
+      // Set headers for browser caching
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=604800'); // 7 days
+      res.setHeader('Access-Control-Allow-Origin', '*');
+
+      return res.send(buffer);
+    } catch (error) {
+      // Logo fetch failed, return error with fallback hint
+      return res.status(404).json({
+        error: 'Logo not found',
+        nextFallback: fallback === 'brandfetch' ? 'google' : (fallback ? null : 'brandfetch')
+      });
+    }
+  } catch (error) {
+    console.error('Error in logo endpoint:', error);
+    res.status(500).json({
+      error: 'Failed to fetch logo',
+      message: error.message,
+    });
+  }
+});
+
 // Saved internships routes
 app.get('/api/saved-internships/:userId', async (req, res) => {
   try {
@@ -293,6 +384,44 @@ app.delete('/api/saved-internships/:userId/:internshipId', async (req, res) => {
   }
 });
 
+// Preload logos for top companies to warm up cache
+async function preloadLogos() {
+  console.log('🎨 Preloading company logos...');
+
+  // Top tech companies and common internship providers
+  const topCompanies = [
+    'google.com', 'meta.com', 'microsoft.com', 'amazon.com', 'apple.com',
+    'netflix.com', 'adobe.com', 'nvidia.com', 'intel.com', 'ibm.com',
+    'oracle.com', 'salesforce.com', 'stripe.com', 'airbnb.com', 'uber.com',
+    'tesla.com', 'snap.com', 'twitter.com', 'linkedin.com', 'spotify.com',
+    'slack.com', 'zoom.us', 'github.com', 'gitlab.com', 'atlassian.com',
+    'dropbox.com', 'cloudflare.com', 'databricks.com', 'snowflake.com',
+    'mongodb.com', 'shopify.com', 'notion.so', 'figma.com', 'canva.com',
+    'discord.com', 'twitch.tv', 'reddit.com', 'coinbase.com', 'robinhood.com',
+    'paypal.com', 'visa.com', 'mastercard.com', 'goldmansachs.com',
+    'jpmorganchase.com', 'morganstanley.com', 'citadel.com', 'janestreet.com',
+    'mckinsey.com', 'bcg.com', 'bain.com', 'deloitte.com', 'accenture.com',
+    'spacex.com', 'boeing.com', 'lockheedmartin.com', 'palantir.com',
+    // Additional companies from current database
+    'lyft.com', 'ramp.com', 'braze.com', 'toasttab.com', 'asana.com',
+    'zoox.com', 'getcruise.com', 'waymo.com', 'bose.com', 'sonos.com',
+    'seagate.com', 'motorola.com', 'honeywell.com', 'rtx.com'
+  ];
+
+  let cached = 0;
+  const promises = topCompanies.map(async (domain) => {
+    try {
+      await fetchLogoWithCache(domain, null);
+      cached++;
+    } catch (error) {
+      // Silently fail for preloading - logo will be fetched on demand
+    }
+  });
+
+  await Promise.allSettled(promises);
+  console.log(`✅ Preloaded ${cached}/${topCompanies.length} company logos into cache`);
+}
+
 function onServerStart() {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
@@ -301,6 +430,11 @@ function onServerStart() {
   console.log(`📈 Stats API: http://localhost:${PORT}/api/stats`);
 
   setupScraperJobs();
+
+  // Preload logos in background
+  preloadLogos().catch((error) => {
+    console.error('Failed to preload logos:', error);
+  });
 
   if (process.env.SKIP_INITIAL_SCRAPE !== 'true') {
     setTimeout(() => {

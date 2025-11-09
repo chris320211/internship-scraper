@@ -214,9 +214,16 @@ const companyDomains: Record<string, string> = {
   // Automotive
   'Ford': 'ford.com',
   'GM': 'gm.com',
+  'General Motors': 'gm.com',
   'Toyota': 'toyota.com',
   'Rivian': 'rivian.com',
   'Lucid': 'lucidmotors.com',
+  'Lucid Motors': 'lucidmotors.com',
+  'Zoox': 'zoox.com',
+  'Cruise': 'getcruise.com',
+  'Waymo': 'waymo.com',
+  'Aurora': 'aurora.tech',
+  'Argo AI': 'argo.ai',
 
   // Retail
   'Walmart': 'walmart.com',
@@ -287,6 +294,12 @@ const companyDomains: Record<string, string> = {
   'Sketch': 'sketch.com',
   'InVision': 'invisionapp.com',
   'Abstract': 'abstract.com',
+  'Braze': 'braze.com',
+  'Toast': 'toasttab.com',
+  'Lightmatter': 'lightmatter.co',
+  'Tenstorrent': 'tenstorrent.com',
+  'Sanctuary AI': 'sanctuary.ai',
+  'Formlabs': 'formlabs.com',
 
   // Gaming & Entertainment
   'Riot Games': 'riotgames.com',
@@ -342,6 +355,43 @@ const companyDomains: Record<string, string> = {
   'LastPass': 'lastpass.com',
   'Duo Security': 'duo.com',
   'Tanium': 'tanium.com',
+
+  // Hardware & Manufacturing
+  'Bose': 'bose.com',
+  'Sonos': 'sonos.com',
+  'Seagate': 'seagate.com',
+  'Motorola': 'motorola.com',
+  'Honeywell': 'honeywell.com',
+  'Trimble': 'trimble.com',
+  'Hitachi Energy': 'hitachienergy.com',
+  'General Dynamics': 'gd.com',
+  'General Dynamics Mission Systems': 'gd.com',
+  'Flowserve': 'flowserve.com',
+  'Fresenius Medical Care': 'freseniusmedicalcare.com',
+  'FM Global': 'fmglobal.com',
+  'Altera Corporation': 'altera.com',
+  'ASML': 'asml.com',
+  'ASM Global': 'asmglobal.com',
+  'Barry-Wehmiller': 'barrywehmiller.com',
+
+  // Other Companies
+  'Wing': 'wing.com',
+  'Bandwidth': 'bandwidth.com',
+  'Awardco': 'awardco.com',
+  'Associated Bank': 'associatedbank.com',
+  'CoStar Group': 'costargroup.com',
+  'Enveda Biosciences': 'envedabio.com',
+  'Hootsuite': 'hootsuite.com',
+  'ICF International': 'icf.com',
+  'MEMX': 'memx.com',
+  'Medpace': 'medpace.com',
+  'Medpace, Inc.': 'medpace.com',
+  'Persistent Systems': 'persistent.com',
+  'Reingold': 'reingold.com',
+  'State Street': 'statestreet.com',
+  'Takeda': 'takeda.com',
+  'HCSC': 'hcsc.com',
+  'ConnectPrep': 'connectprep.com',
 
   // More Startups
   'Flexport': 'flexport.com',
@@ -437,49 +487,58 @@ function guessDomainFromName(companyName: string): string | null {
   // Remove spaces and hyphens for domain
   cleanName = cleanName.replace(/[\s-]/g, '');
 
-  // If name is too short, might not be valid
-  if (cleanName.length < 3) return null;
+  // If name is too short or looks like it could be ambiguous, don't guess
+  // This prevents "X" -> x.com, "GO" -> go.com, etc.
+  if (cleanName.length < 4) return null;
+
+  // Don't guess for very common short words that are likely wrong
+  const blocklist = ['go', 'web', 'app', 'dev', 'tech', 'labs', 'data', 'code'];
+  if (blocklist.includes(cleanName)) return null;
 
   return `${cleanName}.com`;
 }
 
+// API base URL - defaults to localhost:3001 in development
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
 // Helper function to get company logo with multiple fallback strategies
+// Now uses backend proxy to avoid CORS issues
 export const getCompanyLogo = (companyName: string): string | null => {
   if (!companyName) return null;
 
-  // Strategy 1: Use Brandfetch CDN - direct access, no API key needed, most reliable
+  // Strategy 1: Use backend proxy with Clearbit (most reliable)
   const domain = getCompanyDomain(companyName);
   if (domain) {
-    // Brandfetch CDN - serves logos directly from their CDN
-    return `https://cdn.brandfetch.io/${domain}?c=1idalcQyn-8DLRJFuTP`;
+    // Use our backend proxy to fetch from Clearbit
+    return `${API_BASE_URL}/api/logo/${domain}`;
   }
 
   // Strategy 2: Try to guess the domain from the company name
   const guessedDomain = guessDomainFromName(companyName);
   if (guessedDomain) {
-    return `https://cdn.brandfetch.io/${guessedDomain}?c=1idalcQyn-8DLRJFuTP`;
+    return `${API_BASE_URL}/api/logo/${guessedDomain}`;
   }
 
   // Strategy 3: Return null to show initials fallback in component
   return null;
 };
 
-// Helper to get fallback logo (using Clearbit)
+// Helper to get fallback logo (using Brandfetch via backend proxy)
 export const getFallbackLogo = (companyName: string): string | null => {
   const domain = getCompanyDomain(companyName) || guessDomainFromName(companyName);
   if (domain) {
-    // Try Clearbit as first fallback
-    return `https://logo.clearbit.com/${domain}`;
+    // Use backend proxy with Brandfetch fallback
+    return `${API_BASE_URL}/api/logo/${domain}?fallback=brandfetch`;
   }
   return null;
 };
 
-// Helper to get final fallback logo (Google favicon)
+// Helper to get final fallback logo (Google favicon via backend proxy)
 export const getFinalFallbackLogo = (companyName: string): string | null => {
   const domain = getCompanyDomain(companyName) || guessDomainFromName(companyName);
   if (domain) {
-    // Google's favicon service as ultimate fallback - always works
-    return `https://www.google.com/s2/favicons?domain=${domain}&sz=256`;
+    // Use backend proxy with Google favicon as ultimate fallback
+    return `${API_BASE_URL}/api/logo/${domain}?fallback=google`;
   }
   return null;
 };
