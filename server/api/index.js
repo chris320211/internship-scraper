@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import NodeCache from 'node-cache';
-import { getInternships, getDatabaseStats, getScrapingStats, databaseReady, getSavedInternships, saveInternship, unsaveInternship } from './database.js';
+import pool, { getInternships, getDatabaseStats, getScrapingStats, databaseReady, getSavedInternships, saveInternship, unsaveInternship } from './database.js';
 import { setupScraperJobs, runInitialScrape, runAllScrapers } from './scraperJob.js';
 import { signup, login, createUserProfile, updateUserProfile, getUserProfile } from './authService.js';
 
@@ -379,6 +379,74 @@ app.delete('/api/saved-internships/:userId/:internshipId', async (req, res) => {
     console.error('Error unsaving internship:', error);
     res.status(500).json({
       error: 'Failed to unsave internship',
+      message: error.message,
+    });
+  }
+});
+
+// User preferences routes (session-based)
+app.get('/api/preferences/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    if (!sessionId) {
+      return res.status(400).json({
+        error: 'Session ID is required',
+      });
+    }
+
+    const result = await pool.query(
+      'SELECT * FROM user_preferences_session WHERE session_id = $1',
+      [sessionId]
+    );
+
+    res.json({
+      preferences: result.rows[0] || null,
+    });
+  } catch (error) {
+    console.error('Error fetching preferences:', error);
+    res.status(500).json({
+      error: 'Failed to fetch preferences',
+      message: error.message,
+    });
+  }
+});
+
+app.post('/api/preferences', async (req, res) => {
+  try {
+    const { sessionId, preferredJobTypes, eligibleYear, preferredLocations, remoteOnly, savedSearches, hasCompletedOnboarding } = req.body;
+
+    if (!sessionId) {
+      return res.status(400).json({
+        error: 'Session ID is required',
+      });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO user_preferences_session
+       (session_id, preferred_job_types, eligible_year, preferred_locations, remote_only, saved_searches, has_completed_onboarding)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (session_id)
+       DO UPDATE SET
+         preferred_job_types = EXCLUDED.preferred_job_types,
+         eligible_year = EXCLUDED.eligible_year,
+         preferred_locations = EXCLUDED.preferred_locations,
+         remote_only = EXCLUDED.remote_only,
+         saved_searches = EXCLUDED.saved_searches,
+         has_completed_onboarding = EXCLUDED.has_completed_onboarding,
+         updated_at = NOW()
+       RETURNING *`,
+      [sessionId, preferredJobTypes || [], eligibleYear || null, preferredLocations || [], remoteOnly || false, JSON.stringify(savedSearches || []), hasCompletedOnboarding || false]
+    );
+
+    res.json({
+      message: 'Preferences saved successfully',
+      preferences: result.rows[0],
+    });
+  } catch (error) {
+    console.error('Error saving preferences:', error);
+    res.status(500).json({
+      error: 'Failed to save preferences',
       message: error.message,
     });
   }

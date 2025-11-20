@@ -108,7 +108,7 @@ function InternshipSearch() {
     return { jobTypes: Array.from(jobTypes), years, remote };
   };
 
-  const handlePromptComplete = (prompt: string) => {
+  const handlePromptComplete = async (prompt: string) => {
     setUserPrompt(prompt);
 
     const filters = parsePromptForFilters(prompt);
@@ -118,7 +118,7 @@ function InternshipSearch() {
     setSearchQuery(prompt);
 
     try {
-      localStorageDB.saveUserPreferences({
+      await localStorageDB.saveUserPreferences({
         session_id: sessionId,
         preferred_job_types: filters.jobTypes,
         eligible_year: filters.years[0] || null,

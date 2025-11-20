@@ -8,5 +8,8 @@
     "lint": "cd client && npm run lint",
     "preview": "cd client && npm run preview",
     "typecheck": "cd client && npm run typecheck"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.80.0"
   }
 }

@@ -189,4 +189,48 @@ export const api = {
       throw error;
     }
   },
+
+  /**
+   * Get user preferences by session ID
+   */
+  async getUserPreferences(sessionId: string): Promise<any | null> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/preferences/${sessionId}`);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch preferences: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.preferences;
+    } catch (error) {
+      console.error('Error fetching preferences:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Save user preferences
+   */
+  async saveUserPreferences(sessionId: string, preferences: any): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/preferences`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId,
+          ...preferences,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to save preferences: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Error saving preferences:', error);
+      throw error;
+    }
+  },
 };

@@ -2,12 +2,68 @@ import pkg from 'pg';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import { readFile } from 'fs/promises';
+import { existsSync, readFileSync } from 'fs';
 const { Pool } = pkg;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const SCHEMA_PATH = path.resolve(__dirname, '../database/schema.sql');
 let schemaInitialization;
+
+function loadEnvFromFile() {
+  const candidatePaths = [
+    process.env.DOTENV_PATH,
+    path.resolve(process.cwd(), '.env'),
+    path.resolve(__dirname, '../../.env'),
+    path.resolve(__dirname, '../.env'),
+  ].filter(Boolean);
+
+  for (const envPath of candidatePaths) {
+    try {
+      if (!existsSync(envPath)) {
+        continue;
+      }
+
+      const envContents = readFileSync(envPath, 'utf-8');
+      envContents.split(/\r?\n/).forEach((line) => {
+        if (!line || !line.trim() || line.trim().startsWith('#')) {
+          return;
+        }
+
+        const normalized = line.trim().startsWith('export ')
+          ? line.trim().slice(7).trim()
+          : line.trim();
+
+        const equalsIndex = normalized.indexOf('=');
+        if (equalsIndex === -1) {
+          return;
+        }
+
+        const key = normalized.slice(0, equalsIndex).trim();
+        let value = normalized.slice(equalsIndex + 1).trim();
+
+        if (!key || key in process.env) {
+          return;
+        }
+
+        if (
+          (value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))
+        ) {
+          value = value.slice(1, -1);
+        }
+
+        process.env[key] = value;
+      });
+
+      return;
+    } catch (error) {
+      // Ignore and try next candidate
+    }
+  }
+}
+
+loadEnvFromFile();
 
 function decodeHtmlEntities(text) {
   if (!text || typeof text !== 'string') {

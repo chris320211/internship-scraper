@@ -1,4 +1,14 @@
--- Database schema for internship scraper
+-- Supabase Schema for Internship Scraper
+-- Run this in Supabase SQL Editor
+
+-- Function to update updated_at timestamp (CREATE FUNCTION FIRST!)
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 -- Create internships table
 CREATE TABLE IF NOT EXISTS internships (
@@ -22,16 +32,60 @@ CREATE TABLE IF NOT EXISTS internships (
     last_seen_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Drop graduation_years column if it exists
-ALTER TABLE internships DROP COLUMN IF EXISTS graduation_years;
-
--- Create indexes for faster queries
+-- Create indexes for internships table
 CREATE INDEX IF NOT EXISTS idx_internships_company ON internships(company_name);
 CREATE INDEX IF NOT EXISTS idx_internships_job_type ON internships(job_type);
 CREATE INDEX IF NOT EXISTS idx_internships_location ON internships(location);
 CREATE INDEX IF NOT EXISTS idx_internships_source ON internships(source);
 CREATE INDEX IF NOT EXISTS idx_internships_active ON internships(is_active);
 CREATE INDEX IF NOT EXISTS idx_internships_posted_date ON internships(posted_date DESC);
+CREATE INDEX IF NOT EXISTS idx_internships_student_status ON internships(student_status);
+CREATE INDEX IF NOT EXISTS idx_internships_visa_requirements ON internships(visa_requirements);
+
+-- Trigger to auto-update updated_at for internships
+DROP TRIGGER IF EXISTS update_internships_updated_at ON internships;
+CREATE TRIGGER update_internships_updated_at
+    BEFORE UPDATE ON internships
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Create users table (basic auth, can be replaced with Supabase Auth later)
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+-- Trigger to auto-update updated_at for users
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+CREATE TRIGGER update_users_updated_at
+    BEFORE UPDATE ON users
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Create user profiles table
+CREATE TABLE IF NOT EXISTS user_profiles (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    college_year TEXT, -- 'Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate'
+    career_interests TEXT[] DEFAULT '{}', -- Array of career interests
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
+
+-- Trigger to auto-update updated_at for user_profiles
+DROP TRIGGER IF EXISTS update_user_profiles_updated_at ON user_profiles;
+CREATE TRIGGER update_user_profiles_updated_at
+    BEFORE UPDATE ON user_profiles
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
 
 -- Create user saved internships table
 CREATE TABLE IF NOT EXISTS saved_internships (
@@ -75,6 +129,12 @@ CREATE TABLE IF NOT EXISTS user_preferences_session (
 );
 
 CREATE INDEX IF NOT EXISTS idx_preferences_session_id ON user_preferences_session(session_id);
+
+DROP TRIGGER IF EXISTS update_user_preferences_session_updated_at ON user_preferences_session;
+CREATE TRIGGER update_user_preferences_session_updated_at
+    BEFORE UPDATE ON user_preferences_session
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
 
 -- Create scraping logs table
 CREATE TABLE IF NOT EXISTS scraping_logs (
@@ -138,103 +198,82 @@ CREATE TRIGGER update_source_polling_metadata_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
--- Create users table
-CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    email TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- Enable Row Level Security (RLS) for Supabase
+ALTER TABLE internships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE saved_internships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_preferences_session ENABLE ROW LEVEL SECURITY;
 
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+-- RLS Policies
 
--- Create user profiles table
-CREATE TABLE IF NOT EXISTS user_profiles (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    college_year TEXT, -- 'Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate'
-    career_interests TEXT[] DEFAULT '{}', -- Array of career interests
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(user_id)
-);
+-- Internships are publicly readable (anyone can browse jobs)
+CREATE POLICY "Internships are viewable by everyone"
+    ON internships FOR SELECT
+    USING (true);
 
-CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
+-- Only authenticated backend can insert/update internships (disable RLS for server)
+-- This allows your backend API to manage internships
+CREATE POLICY "Backend can manage internships"
+    ON internships FOR INSERT
+    WITH CHECK (true);
 
--- Trigger to auto-update updated_at for users
-DROP TRIGGER IF EXISTS update_users_updated_at ON users;
-CREATE TRIGGER update_users_updated_at
-    BEFORE UPDATE ON users
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+CREATE POLICY "Backend can update internships"
+    ON internships FOR UPDATE
+    USING (true);
 
--- Trigger to auto-update updated_at for user_profiles
-DROP TRIGGER IF EXISTS update_user_profiles_updated_at ON user_profiles;
-CREATE TRIGGER update_user_profiles_updated_at
-    BEFORE UPDATE ON user_profiles
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+CREATE POLICY "Backend can delete internships"
+    ON internships FOR DELETE
+    USING (true);
 
--- Function to update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+-- Saved internships - allow all operations for now (we'll add auth later)
+CREATE POLICY "Anyone can view saved internships"
+    ON saved_internships FOR SELECT
+    USING (true);
 
--- Trigger to auto-update updated_at
-DROP TRIGGER IF EXISTS update_internships_updated_at ON internships;
-CREATE TRIGGER update_internships_updated_at
-    BEFORE UPDATE ON internships
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+CREATE POLICY "Anyone can insert saved internships"
+    ON saved_internships FOR INSERT
+    WITH CHECK (true);
 
--- Trigger to auto-update updated_at for user preferences sessions
-DROP TRIGGER IF EXISTS update_user_preferences_session_updated_at ON user_preferences_session;
-CREATE TRIGGER update_user_preferences_session_updated_at
-    BEFORE UPDATE ON user_preferences_session
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+CREATE POLICY "Anyone can update saved internships"
+    ON saved_internships FOR UPDATE
+    USING (true);
 
--- Migration: Add new eligibility columns if they don't exist
-DO $$
-BEGIN
-    -- Add student_status column
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'internships' AND column_name = 'student_status'
-    ) THEN
-        ALTER TABLE internships ADD COLUMN student_status TEXT DEFAULT 'any';
-    END IF;
+CREATE POLICY "Anyone can delete saved internships"
+    ON saved_internships FOR DELETE
+    USING (true);
 
-    -- Add visa_requirements column
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'internships' AND column_name = 'visa_requirements'
-    ) THEN
-        ALTER TABLE internships ADD COLUMN visa_requirements TEXT DEFAULT 'unknown';
-    END IF;
+-- Users table policies - allow backend to manage
+CREATE POLICY "Anyone can view users"
+    ON users FOR SELECT
+    USING (true);
 
-    -- Add degree_level column
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'internships' AND column_name = 'degree_level'
-    ) THEN
-        ALTER TABLE internships ADD COLUMN degree_level TEXT[] DEFAULT '{any}';
-    END IF;
+CREATE POLICY "Anyone can manage users"
+    ON users FOR ALL
+    USING (true);
 
-    -- Add major_requirements column
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'internships' AND column_name = 'major_requirements'
-    ) THEN
-        ALTER TABLE internships ADD COLUMN major_requirements TEXT[] DEFAULT '{any}';
-    END IF;
-END$$;
+-- User profiles policies - allow backend to manage
+CREATE POLICY "Anyone can view user_profiles"
+    ON user_profiles FOR SELECT
+    USING (true);
 
--- Create indexes for new columns
-CREATE INDEX IF NOT EXISTS idx_internships_student_status ON internships(student_status);
-CREATE INDEX IF NOT EXISTS idx_internships_visa_requirements ON internships(visa_requirements);
+CREATE POLICY "Anyone can manage user_profiles"
+    ON user_profiles FOR ALL
+    USING (true);
+
+-- Session-based preferences policies
+CREATE POLICY "Anyone can view preferences"
+    ON user_preferences_session FOR SELECT
+    USING (true);
+
+CREATE POLICY "Anyone can insert preferences"
+    ON user_preferences_session FOR INSERT
+    WITH CHECK (true);
+
+CREATE POLICY "Anyone can update preferences"
+    ON user_preferences_session FOR UPDATE
+    USING (true);
+
+CREATE POLICY "Anyone can delete preferences"
+    ON user_preferences_session FOR DELETE
+    USING (true);
